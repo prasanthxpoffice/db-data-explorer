@@ -1,0 +1,13 @@
+# LocalDB runtime files (never commit)
+db/*.mdf
+db/*.ldf
+
+# Optional: if you experiment with classic backups
+db/*.bak
+
+# Node / tooling
+node_modules/
+.env
+.vscode/
+*.log
+dist/
