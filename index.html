@@ -1,0 +1,289 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>db-data-explorer • Graph Viewer</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <!-- Cytoscape -->
+  <script src="https://unpkg.com/cytoscape@3.28.1/dist/cytoscape.min.js"></script>
+  <style>
+    :root { --bg:#0f172a; --panel:#111827; --ink:#e5e7eb; --muted:#9ca3af; }
+    html, body { height:100%; margin:0; background:var(--bg); color:var(--ink); font-family:Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
+    .wrap { display:grid; grid-template-columns: 360px 1fr; height:100%; gap:12px; padding:12px; box-sizing:border-box; }
+    .panel { background:var(--panel); border:1px solid #1f2937; border-radius:14px; padding:14px; display:flex; flex-direction:column; gap:12px; }
+    h1 { font-size:18px; margin:0 0 4px 0; color:#f9fafb; }
+    label { display:block; font-size:12px; color:var(--muted); margin-bottom:6px; }
+    textarea, input, select { width:100%; background:#0b1220; color:#e5e7eb; border:1px solid #243044; border-radius:10px; padding:10px; font-size:12px; resize:vertical; }
+    .row { display:grid; grid-template-columns: 1fr 1fr; gap:8px; }
+    .btns { display:flex; gap:8px; flex-wrap:wrap; }
+    button { background:#1f2937; color:#e5e7eb; border:1px solid #374151; padding:10px 12px; border-radius:10px; cursor:pointer; font-size:13px; }
+    button:hover { background:#2a3648; }
+    #cy { background:#0b1220; border:1px solid #1f2937; border-radius:14px; }
+    .hint { color:#9ca3af; font-size:12px; }
+    .tag { display:inline-block; padding:2px 6px; border:1px solid #334155; border-radius:999px; font-size:11px; color:#cbd5e1; background:#0b1220; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="panel">
+      <h1>db-data-explorer</h1>
+      <div>
+        <label>Mode</label>
+        <div class="row">
+          <label class="hint"><input type="radio" name="mode" value="mock" checked> Mock (built-in sample)</label>
+          <label class="hint"><input type="radio" name="mode" value="api"> API (<span class="tag">POST /api/traverseStepMulti</span>)</label>
+        </div>
+      </div>
+
+      <div>
+        <label>Seeds JSON (sent in API mode)</label>
+        <textarea id="seed" rows="7">{
+  "viewIds": [1, 2],
+  "frontier": [{"col":"ID_AID","val":"1"}],
+  "perViewExclude": [],
+  "depth": 1,
+  "lang": "en",
+  "maxFanout": 200
+}</textarea>
+        <div class="hint">Nodes are unique by <code>(col,val)</code> → id = <code>${col}:${val}</code>. Edges are unique by <code>source->target</code>.</div>
+      </div>
+
+      <div class="row">
+        <div>
+          <label>Language</label>
+          <select id="lang">
+            <option value="en" selected>English</option>
+            <option value="ar">Arabic</option>
+          </select>
+        </div>
+        <div>
+          <label>Layout</label>
+          <select id="layout">
+            <option value="cose" selected>cose</option>
+            <option value="breadthfirst">breadthfirst</option>
+            <option value="concentric">concentric</option>
+            <option value="grid">grid</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="btns">
+        <button id="run">Run Step</button>
+        <button id="expand">Expand Selected Node</button>
+        <button id="clear">Clear Graph</button>
+      </div>
+
+      <div class="hint">Tip: click a node, then “Expand Selected Node”. Already existing nodes/edges are not re-created.</div>
+    </div>
+
+    <div id="cy"></div>
+  </div>
+
+  <script>
+    // ---------- Graph setup ----------
+    const cy = cytoscape({
+      container: document.getElementById('cy'),
+      style: [
+        {
+          selector: 'node',
+          style: {
+            'label': 'data(label)',
+            'text-wrap': 'wrap',
+            'text-max-width': 120,
+            'font-size': 12,
+            'background-color': ele => ele.data('color') || '#64748b',
+            'border-width': 1,
+            'border-color': '#0f172a',
+            'width': 'label',
+            'height': 'label',
+            'padding': '10px',
+            'shape': 'round-rectangle',
+            'text-valign': 'center',
+            'text-halign': 'center',
+            'color': '#e5e7eb'
+          }
+        },
+        {
+          selector: 'edge',
+          style: {
+            'width': 2,
+            'line-color': '#475569',
+            'target-arrow-color': '#475569',
+            'target-arrow-shape': 'triangle',
+            'curve-style': 'bezier'
+          }
+        },
+        { selector: ':selected', style: { 'border-width': 2, 'border-color': '#f59e0b' } }
+      ],
+      layout: { name: 'cose' },
+      wheelSensitivity: 0.15
+    });
+
+    // ---------- Helpers ----------
+    function nodeId(col, val) { return `${col}:${val}`; }
+    function edgeId(from_col, from_val, to_col, to_val) { return `${from_col}:${from_val}->${to_col}:${to_val}`; }
+
+    function ensureNode({ col, val, text, color, type }) {
+      const id = nodeId(col, val);
+      if (!cy.getElementById(id).empty()) return cy.getElementById(id);
+      const label = text || String(val);
+      return cy.add({ group: 'nodes', data: { id, col, val, label, color, type } });
+    }
+
+    function ensureEdge(row) {
+      const source = nodeId(row.from_col, row.from_val);
+      const target = nodeId(row.to_col, row.to_val);
+      const id = edgeId(row.from_col, row.from_val, row.to_col, row.to_val);
+      if (!cy.getElementById(id).empty()) return cy.getElementById(id);
+
+      // Create endpoint nodes first (with labels/colors from row)
+      ensureNode({ col: row.from_col, val: row.from_val, text: row.from_text, color: row.from_color, type: row.from_type });
+      ensureNode({ col: row.to_col,   val: row.to_val,   text: row.to_text,   color: row.to_color,   type: row.to_type });
+
+      return cy.add({ group: 'edges', data: { id, source, target } });
+    }
+
+    function relayout() {
+      const name = document.getElementById('layout').value;
+      cy.layout({ name, animate: true, fit: true, padding: 20 }).run();
+    }
+
+    // ---------- MOCK DATA (for standalone demo) ----------
+    const mock = {
+      edges: [
+        // Member(1) -> company(1)
+        { from_col:'ID_AID', from_val:'1', from_type:'Member', from_text:'Prasanth', from_color:'#0000FF',
+          to_col:'ID_BID',   to_val:'1',   to_type:'company', to_text:'GAL',        to_color:'#00FF00' },
+
+        // Member(1) -> Car(11), Car(12)
+        { from_col:'ID_AID', from_val:'1', from_type:'Member', from_text:'Prasanth', from_color:'#0000FF',
+          to_col:'ID_CID',   to_val:'11',  to_type:'Car',     to_text:'Rav 4',      to_color:'#FFFF00' },
+        { from_col:'ID_AID', from_val:'1', from_type:'Member', from_text:'Prasanth', from_color:'#0000FF',
+          to_col:'ID_CID',   to_val:'12',  to_type:'Car',     to_text:'Yaris',      to_color:'#FFFF00' },
+
+        // Member(1) -> Spouse(1), Son(2), Son(3)
+        { from_col:'ID_AID', from_val:'1', from_type:'Member', from_text:'Prasanth', from_color:'#0000FF',
+          to_col:'ID_DID',   to_val:'1',   to_type:'Spouse',  to_text:'Mary',       to_color:'#008080' },
+        { from_col:'ID_AID', from_val:'1', from_type:'Member', from_text:'Prasanth', from_color:'#0000FF',
+          to_col:'ID_DID',   to_val:'2',   to_type:'Son',     to_text:'Johaan',     to_color:'#FFA500' },
+        { from_col:'ID_AID', from_val:'1', from_type:'Member', from_text:'Prasanth', from_color:'#0000FF',
+          to_col:'ID_DID',   to_val:'3',   to_type:'Son',     to_text:'Abram',      to_color:'#FFA500' }
+      ],
+      nextFrontier: [
+        { col:'ID_BID', val:'1' },
+        { col:'ID_CID', val:'11' }, { col:'ID_CID', val:'12' },
+        { col:'ID_DID', val:'1' },  { col:'ID_DID', val:'2' }, { col:'ID_DID', val:'3' }
+      ]
+    };
+
+    // ---------- State maintained in the page ----------
+    let currentFrontier = mock.nextFrontier.slice();   // will be replaced in API mode
+    let perViewExclude = [];                           // client keeps per-view exclude if you want to use it
+
+    // ---------- Render helpers ----------
+    function renderEdges(rows) {
+      rows.forEach(ensureEdge);
+      relayout();
+    }
+
+    // ---------- API call ----------
+    async function apiStep(body) {
+      const res = await fetch('/api/traverseStepMulti', {
+        method: 'POST',
+        headers: { 'Content-Type':'application/json' },
+        body: JSON.stringify(body)
+      });
+      if (!res.ok) throw new Error(`API ${res.status} ${await res.text()}`);
+      return res.json(); // { edges, nextFrontier }
+    }
+
+    // ---------- Button handlers ----------
+    document.getElementById('run').addEventListener('click', async () => {
+      const mode = [...document.querySelectorAll('input[name="mode"]')].find(x => x.checked).value;
+      const lang = document.getElementById('lang').value;
+
+      if (mode === 'mock') {
+        renderEdges(mock.edges);
+        currentFrontier = mock.nextFrontier.slice();
+        return;
+      }
+
+      // API mode
+      let payload;
+      try {
+        payload = JSON.parse(document.getElementById('seed').value);
+      } catch (e) {
+        alert('Invalid JSON in Seeds.');
+        return;
+      }
+      payload.lang = lang;
+      // Keep per-view excludes in sync in API mode for parity with Expand
+      payload.perViewExclude = perViewExclude;
+
+      try {
+        const { edges, nextFrontier } = await apiStep(payload);
+        renderEdges(edges || []);
+        currentFrontier = (nextFrontier || []).slice();
+
+        // Optional: maintain per-view exclude client-side for next requests
+        if (Array.isArray(payload.viewIds)) {
+          for (const v of payload.viewIds) {
+            for (const f of currentFrontier) perViewExclude.push({ ViewID: v, col: f.col, val: f.val });
+          }
+        }
+      } catch (err) {
+        console.error(err);
+        alert(err.message);
+      }
+    });
+
+    document.getElementById('expand').addEventListener('click', async () => {
+      const sel = cy.$('node:selected');
+      if (sel.size() !== 1) { alert('Select one node to expand.'); return; }
+      const n = sel[0].data(); // {id, col, val, ...}
+      const mode = [...document.querySelectorAll('input[name="mode"]')].find(x => x.checked).value;
+      const lang = document.getElementById('lang').value;
+
+      if (mode === 'mock') {
+        alert('Mock mode: use "Run Step" to see the demo edges.');
+        return;
+      }
+
+      // Build payload from the selected node and accumulated excludes
+      let payload;
+      try {
+        payload = JSON.parse(document.getElementById('seed').value);
+      } catch (e) {
+        alert('Invalid JSON in Seeds.');
+        return;
+      }
+      payload.lang = lang;
+      payload.frontier = [{ col: n.col, val: String(n.val) }];
+      payload.perViewExclude = perViewExclude;
+
+      try {
+        const { edges, nextFrontier } = await apiStep(payload);
+        renderEdges(edges || []);
+        currentFrontier = (nextFrontier || []).slice();
+        if (Array.isArray(payload.viewIds)) {
+          for (const v of payload.viewIds) {
+            for (const f of currentFrontier) perViewExclude.push({ ViewID: v, col: f.col, val: f.val });
+          }
+        }
+      } catch (err) {
+        console.error(err);
+        alert(err.message);
+      }
+    });
+
+    document.getElementById('clear').addEventListener('click', () => {
+      cy.elements().remove();
+      currentFrontier = [];
+      perViewExclude = [];
+    });
+
+    // Initial render in mock mode so you see something immediately:
+    renderEdges(mock.edges);
+  </script>
+</body>
+</html>

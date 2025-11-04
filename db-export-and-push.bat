@@ -40,10 +40,12 @@ for %%P in (SqlPackage.exe) do (
 )
 
 REM Try common install paths (newest to oldest)
+if "%SQLPACKAGE%"=="" if exist "C:\Program Files\Microsoft SQL Server\170\DAC\bin\SqlPackage.exe" set "SQLPACKAGE=C:\Program Files\Microsoft SQL Server\170\DAC\bin\SqlPackage.exe"
 if "%SQLPACKAGE%"=="" if exist "C:\Program Files\Microsoft SQL Server\160\DAC\bin\SqlPackage.exe" set "SQLPACKAGE=C:\Program Files\Microsoft SQL Server\160\DAC\bin\SqlPackage.exe"
 if "%SQLPACKAGE%"=="" if exist "C:\Program Files\Microsoft SQL Server\150\DAC\bin\SqlPackage.exe" set "SQLPACKAGE=C:\Program Files\Microsoft SQL Server\150\DAC\bin\SqlPackage.exe"
 if "%SQLPACKAGE%"=="" if exist "C:\Program Files\Microsoft SQL Server\140\DAC\bin\SqlPackage.exe" set "SQLPACKAGE=C:\Program Files\Microsoft SQL Server\140\DAC\bin\SqlPackage.exe"
-if "%SQLPACKAGE%"=="" if exist "C:\Program Files\Microsoft SQL Server\130\DAC\bin\SqlPackage.exe" set "SQLPACKAGE=C:\Program Files\Microsoft SQL Server\130\DAC\bin\SqlPackage.exe"
+if "%SQLPACKAGE%"=="" if exist "C:\Program Files\Microsoft SQL Server\DAC\bin\SqlPackage.exe" set "SQLPACKAGE=C:\Program Files\Microsoft SQL Server\DAC\bin\SqlPackage.exe"
+if "%SQLPACKAGE%"=="" if exist "%UserProfile%\.dotnet\tools\sqlpackage.exe" set "SQLPACKAGE=%UserProfile%\.dotnet\tools\sqlpackage.exe"
 
 if "%SQLPACKAGE%"=="" (
   echo [ERROR] Could not find SqlPackage.exe.
@@ -55,6 +57,8 @@ echo Found SqlPackage: "%SQLPACKAGE%"
 echo.
 
 REM ---- Export to bacpac ----
+REM Try to start LocalDB (best effort)
+sqllocaldb start MSSQLLocalDB >nul 2>nul
 echo Exporting "%DB%" from "%SERVER%" to "%OUT%" ...
 "%SQLPACKAGE%" /Action:Export /SourceServerName:"%SERVER%" /SourceDatabaseName:"%DB%" /TargetFile:"%OUT%"
 if errorlevel 1 (
