@@ -2,7 +2,7 @@
 
 A lightweight SQL Server (LocalDB) + HTML viewer + .NET API for exploring data relationships and rendering them as a graph in Cytoscape.js.
 
-Supports multi-view traversal, multi-depth exploration, and English/Arabic labels. The front-end can run in mock mode (no backend) or call the API for live data.
+Supports multi-view traversal, multi-depth exploration, and English/Arabic labels. The front-end calls the API for live data.
 
 ---
 
@@ -10,20 +10,13 @@ Supports multi-view traversal, multi-depth exploration, and English/Arabic label
 
 ```
 db-data-explorer/
-├─ db/
-│  ├─ export-bacpac.ps1     # Manual DB export (creates IAS.bacpac)
-│  ├─ import-bacpac.ps1     # Manual DB import (restores IAS.bacpac)
-│  ├─ resolve-sqlserver.ps1 # Picks a SQL Server (defaults to LocalDB)
-│  ├─ IAS.bacpac            # BACPAC snapshot (committed)
-│  └─ import-log.txt        # Import log (ignored by Git)
-├─ server-dotnet/
-│  ├─ Program.cs            # Minimal API (POST /api/traverseStepMulti)
-│  └─ appsettings.json      # Default connection string + Urls
-├─ index.html               # Front-end + Cytoscape.js (mock or API mode)
-├─ db-import-bacpac.bat     # Windows import helper (SqlPackage)
-├─ db-export-and-push.bat   # Windows export + git add/commit/push helper
-├─ start-server.bat         # Starts server-dotnet backend
-└─ .gitignore
+  db/
+  server-dotnet/
+  index.html                 # Front-end + Cytoscape.js
+  db-import-bacpac.bat       # Windows import helper (SqlPackage)
+  db-export-and-push.bat     # Windows export + git add/commit/push helper
+  start-app.bat              # Start server then open browser
+  .gitignore
 ```
 
 ---
@@ -41,27 +34,23 @@ Links: https://dotnet.microsoft.com/ and https://learn.microsoft.com/sql/tools/s
 
 ## Running
 
-1) Start the backend API (serves `index.html` too):
+Recommended: start the app (server + browser) with one command
 
 ```
-start-server.bat
+start-app.bat
 ```
 
-or
+- Uses `PORT` if set (defaults to 3000)
+- Starts the .NET API, waits until reachable, then opens `http://localhost:%PORT%/`
+
+Manual alternative:
 
 ```
 cd server-dotnet
 dotnet run
 ```
 
-The API binds to `http://localhost:3000` (see `server-dotnet/appsettings.json`). Open `http://localhost:3000` in your browser.
-
-2) Front-end modes:
-
-- Mock mode: uses built-in sample graph (no DB required)
-- API mode: posts to `POST /api/traverseStepMulti` on the .NET backend
-
-Switch modes using the radio buttons in the left panel.
+Then open `http://localhost:3000` (or your `PORT`) in the browser. The API also serves `index.html` from the repo root.
 
 ---
 

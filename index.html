@@ -160,7 +160,7 @@
             style: { "border-width": 2, "border-color": "#f59e0b" },
           },
         ],
-        layout: { name: "cose" },
+        layout: { name: document.getElementById("layout").value },
         wheelSensitivity: 0.15,
       });
 
@@ -235,6 +235,7 @@
           cy.layout({ name, animate: true, fit: true, padding: 20 }).run();
         }, 50); // debounce a bit
       }
+      document.getElementById("layout").addEventListener("change", relayout);
 
       function setEdgeStyleForSize() {
         const many = cy.edges().length > 1000;
