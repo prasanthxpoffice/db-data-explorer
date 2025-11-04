@@ -47,9 +47,12 @@ builder.Services.AddCors(options =>
 var app = builder.Build();
 
 // Serve static files from repo root so existing index.html works
-var repoRoot = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, ".."));
-app.UseDefaultFiles(new DefaultFilesOptions { FileProvider = new PhysicalFileProvider(repoRoot) });
-app.UseStaticFiles(new StaticFileOptions { FileProvider = new PhysicalFileProvider(repoRoot) });
+var repoRoot = Path.GetFullPath(Path.Combine(builder.Environment.ContentRootPath, ".."));
+var staticProvider = new PhysicalFileProvider(repoRoot);
+app.UseDefaultFiles(new DefaultFilesOptions { FileProvider = staticProvider });
+app.UseStaticFiles(new StaticFileOptions { FileProvider = staticProvider });
+// Explicit root mapping (helps in some hosting modes)
+app.MapGet("/", () => Results.File(Path.Combine(repoRoot, "index.html"), "text/html"));
 app.UseCors();
 
 app.MapGet("/health", async () =>
