@@ -1,388 +1,515 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <title>db-data-explorer · Graph Viewer</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <!-- Cytoscape -->
-  <script src="https://unpkg.com/cytoscape@3.28.1/dist/cytoscape.min.js"></script>
-  <link rel="stylesheet" href="css/styles.css" />
-  <style>
-    /* Small inline tweaks for list buttons */
-    #seed-list button { font-size: 11px; padding: 2px 6px; }
-  </style>
+  <head>
+    <meta charset="utf-8" />
+    <title>db-data-explorer · Graph Viewer</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!-- Cytoscape -->
+    <script src="https://unpkg.com/cytoscape@3.28.1/dist/cytoscape.min.js"></script>
+    <link rel="stylesheet" href="css/styles.css" />
+    <style>
+      /* Small inline tweaks for list buttons */
+      #seed-list button {
+        font-size: 11px;
+        padding: 2px 6px;
+      }
+    </style>
   </head>
-<body>
-  <div class="wrap">
-    <div class="panel">
-      <h1>db-data-explorer</h1>
+  <body>
+    <div class="wrap">
+      <div class="panel">
+        <h1>db-data-explorer</h1>
 
-      <div>
-        <label>API</label>
-        <div class="hint"><span class="tag">POST /api/traverseStepMulti</span></div>
-      </div>
-
-      <div>
-        <label>Filters</label>
-        <div class="row">
-          <div>
-            <label>View IDs</label>
-            <div class="multiselect" id="view-select">
-              <button id="view-dropdown-btn" type="button">Selected: 1,2</button>
-              <div class="multiselect-menu" id="view-dropdown"></div>
-            </div>
-          </div>
-          <div>
-            <label>Depth</label>
-            <input id="depth" type="number" min="1" step="1" value="1" />
-          </div>
-        </div>
-        <div class="row">
-          <div>
-            <label>Max Fanout (optional)</label>
-            <input id="maxFanout" type="number" min="1" step="1" value="200" />
-          </div>
-          <div></div>
-        </div>
-        <div class="row">
-          <div>
-            <label>Language</label>
-            <select id="lang">
-              <option value="en" selected>English</option>
-              <option value="ar">Arabic</option>
-            </select>
-          </div>
-          <div>
-            <label>Layout</label>
-            <select id="layout">
-              <option value="cose" selected>cose</option>
-              <option value="breadthfirst">breadthfirst</option>
-              <option value="concentric">concentric</option>
-              <option value="grid">grid</option>
-            </select>
+        <div>
+          <label>API</label>
+          <div class="hint">
+            <span class="tag">POST /api/traverseStepMulti</span>
           </div>
         </div>
 
         <div>
-          <label>Seeds (Frontier)</label>
+          <label>Filters</label>
           <div class="row">
-            <input id="seed-col" type="text" placeholder="Column (e.g. ID_AID)" />
-            <input id="seed-val" type="text" placeholder="Value (e.g. 1)" />
+            <div>
+              <label>View IDs</label>
+              <div class="multiselect" id="view-select">
+                <button id="view-dropdown-btn" type="button">
+                  Selected: 1,2
+                </button>
+                <div class="multiselect-menu" id="view-dropdown"></div>
+              </div>
+            </div>
+            <div>
+              <label>Depth</label>
+              <input id="depth" type="number" min="1" step="1" value="1" />
+            </div>
           </div>
-          <div class="btns" style="margin-top:8px;">
-            <button id="add-seed" type="button">Add Seed</button>
-            <button id="clear-seeds" type="button">Clear Seeds</button>
+          <div class="row">
+            <div>
+              <label>Max Fanout (optional)</label>
+              <input
+                id="maxFanout"
+                type="number"
+                min="1"
+                step="1"
+                value="200"
+              />
+            </div>
+            <div></div>
           </div>
-          <div class="hint">Seeds are <code>{ col, val }</code> pairs. Example: col <code>ID_AID</code>, val <code>1</code>.</div>
-          <ul id="seed-list" style="list-style:none; padding-left:0; margin-top:8px;"></ul>
-        </div>
+          <div class="row">
+            <div>
+              <label>Language</label>
+              <select id="lang">
+                <option value="en" selected>English</option>
+                <option value="ar">Arabic</option>
+              </select>
+            </div>
+            <div>
+              <label>Layout</label>
+              <select id="layout">
+                <option value="cose" selected>cose</option>
+                <option value="breadthfirst">breadthfirst</option>
+                <option value="concentric">concentric</option>
+                <option value="grid">grid</option>
+              </select>
+            </div>
+          </div>
 
-        <div class="btns">
-          <button id="run">Run Step</button>
-          <button id="clear">Clear Graph</button>
+          <div>
+            <label>Seeds (Frontier)</label>
+            <div class="row">
+              <input
+                id="seed-col"
+                type="text"
+                placeholder="Column (e.g. ID_AID)"
+              />
+              <input id="seed-val" type="text" placeholder="Value (e.g. 1)" />
+            </div>
+            <div class="btns" style="margin-top: 8px">
+              <button id="add-seed" type="button">Add Seed</button>
+              <button id="clear-seeds" type="button">Clear Seeds</button>
+            </div>
+            <div class="hint">
+              Seeds are <code>{ col, val }</code> pairs. Example: col
+              <code>ID_AID</code>, val <code>1</code>.
+            </div>
+            <ul
+              id="seed-list"
+              style="list-style: none; padding-left: 0; margin-top: 8px"
+            ></ul>
+          </div>
+
+          <div class="btns">
+            <button id="run">Run Step</button>
+            <button id="clear">Clear Graph</button>
+          </div>
+          <div class="hint">
+            Tip: select a node in the graph to auto-expand.
+          </div>
         </div>
-        <div class="hint">Tip: select a node in the graph to auto-expand.</div>
       </div>
 
+      <div id="cy"></div>
     </div>
 
-    <div id="cy"></div>
-  </div>
+    <script>
+      // ---------- Graph setup ----------
+      // Base URL for API calls. If opened via file://, default to localhost:3000.
+      const apiBase =
+        location.protocol === "file:" ? "http://localhost:3000" : "";
+      const cy = cytoscape({
+        container: document.getElementById("cy"),
+        style: [
+          {
+            selector: "node",
+            style: {
+              label: "data(label)",
+              "text-wrap": "wrap",
+              "text-max-width": 120,
+              "font-size": 12,
+              "background-color": (ele) => ele.data("color") || "#64748b",
+              "border-width": 1,
+              "border-color": "#0f172a",
+              width: "label",
+              height: "label",
+              padding: "10px",
+              shape: "round-rectangle",
+              "text-valign": "center",
+              "text-halign": "center",
+              color: "#e5e7eb",
+            },
+          },
+          {
+            selector: "edge",
+            style: {
+              width: 2,
+              "line-color": "#475569",
+              "target-arrow-color": "#475569",
+              "target-arrow-shape": "triangle",
+              "curve-style": "bezier",
+            },
+          },
+          // If an edge is marked bidirectional, show arrowheads on both ends
+          {
+            selector: "edge[bidirectional]",
+            style: { "source-arrow-shape": "triangle" },
+          },
+          {
+            selector: ":selected",
+            style: { "border-width": 2, "border-color": "#f59e0b" },
+          },
+        ],
+        layout: { name: "cose" },
+        wheelSensitivity: 0.15,
+      });
 
-  <script>
-    // ---------- Graph setup ----------
-    // Base URL for API calls. If opened via file://, default to localhost:3000.
-    const apiBase = (location.protocol === 'file:' ? 'http://localhost:3000' : '');
-    const cy = cytoscape({
-      container: document.getElementById('cy'),
-      style: [
-        {
-          selector: 'node',
-          style: {
-            'label': 'data(label)',
-            'text-wrap': 'wrap',
-            'text-max-width': 120,
-            'font-size': 12,
-            'background-color': ele => ele.data('color') || '#64748b',
-            'border-width': 1,
-            'border-color': '#0f172a',
-            'width': 'label',
-            'height': 'label',
-            'padding': '10px',
-            'shape': 'round-rectangle',
-            'text-valign': 'center',
-            'text-halign': 'center',
-            'color': '#e5e7eb'
-          }
-        },
-        {
-          selector: 'edge',
-          style: {
-            'width': 2,
-            'line-color': '#475569',
-            'target-arrow-color': '#475569',
-            'target-arrow-shape': 'triangle',
-            'curve-style': 'bezier'
-          }
-        },
-        { selector: ':selected', style: { 'border-width': 2, 'border-color': '#f59e0b' } }
-      ],
-      layout: { name: 'cose' },
-      wheelSensitivity: 0.15
-    });
+      // ---------- Helpers ----------
+      function nodeId(col, val) {
+        return `${col}:${val}`;
+      }
+      function edgeId(from_col, from_val, to_col, to_val) {
+        return `${from_col}:${from_val}->${to_col}:${to_val}`;
+      }
 
-    // ---------- Helpers ----------
-    function nodeId(col, val) { return `${col}:${val}`; }
-    function edgeId(from_col, from_val, to_col, to_val) { return `${from_col}:${from_val}->${to_col}:${to_val}`; }
-
-    function ensureNode({ col, val, text, color, type }) {
-      const id = nodeId(col, val);
-      if (!cy.getElementById(id).empty()) return cy.getElementById(id);
-      const label = text || String(val);
-      return cy.add({ group: 'nodes', data: { id, col, val, label, color, type } });
-    }
-
-    function ensureEdge(row) {
-      const source = nodeId(row.from_col, row.from_val);
-      const target = nodeId(row.to_col, row.to_val);
-      const id = edgeId(row.from_col, row.from_val, row.to_col, row.to_val);
-      if (!cy.getElementById(id).empty()) return cy.getElementById(id);
-
-      // Create endpoint nodes first (with labels/colors from row)
-      ensureNode({ col: row.from_col, val: row.from_val, text: row.from_text, color: row.from_color, type: row.from_type });
-      ensureNode({ col: row.to_col,   val: row.to_val,   text: row.to_text,   color: row.to_color,   type: row.to_type });
-
-      return cy.add({ group: 'edges', data: { id, source, target } });
-    }
-
-    function relayout() {
-      const name = document.getElementById('layout').value;
-      cy.layout({ name, animate: true, fit: true, padding: 20 }).run();
-    }
-
-    // ---------- State maintained in the page ----------
-    let currentFrontier = [];
-    let perViewExclude = [];
-    let perViewExcludeSet = new Set();
-    function addExclude(viewId, col, val) {
-      const key = `${viewId}|${col}|${String(val)}`;
-      if (perViewExcludeSet.has(key)) return;
-      perViewExcludeSet.add(key);
-      perViewExclude.push({ ViewID: viewId, col, val: String(val) });
-    }
-    let seeds = [];
-
-    function renderEdges(rows) {
-      rows.forEach(ensureEdge);
-      relayout();
-    }
-
-    function renderSeedList() {
-      const ul = document.getElementById('seed-list');
-      ul.innerHTML = '';
-      seeds.forEach((s, idx) => {
-        const li = document.createElement('li');
-        li.className = 'hint';
-        li.style.margin = '2px 0';
-        li.textContent = `${s.col} = ${s.val}`;
-        const btn = document.createElement('button');
-        btn.textContent = 'Remove';
-        btn.style.marginLeft = '8px';
-        btn.addEventListener('click', () => {
-          seeds.splice(idx, 1);
-          renderSeedList();
+      function ensureNode({ col, val, text, color, type }) {
+        const id = nodeId(col, val);
+        if (!cy.getElementById(id).empty()) return cy.getElementById(id);
+        const label = text || String(val);
+        return cy.add({
+          group: "nodes",
+          data: { id, col, val, label, color, type },
         });
-        li.appendChild(btn);
-        ul.appendChild(li);
-      });
-    }
-
-    document.getElementById('add-seed').addEventListener('click', () => {
-      const col = (document.getElementById('seed-col').value || '').trim();
-      const val = (document.getElementById('seed-val').value || '').trim();
-      if (!col || !val) { alert('Enter both Column and Value.'); return; }
-      seeds.push({ col, val });
-      document.getElementById('seed-col').value = '';
-      document.getElementById('seed-val').value = '';
-      renderSeedList();
-    });
-
-    document.getElementById('clear-seeds').addEventListener('click', () => {
-      seeds = [];
-      renderSeedList();
-    });
-
-    function buildPayloadFromUI() {
-      const viewIds = getSelectedViewIds();
-      const depth = Math.max(1, parseInt(document.getElementById('depth').value || '1', 10));
-      const lang = document.getElementById('lang').value;
-      const maxFanoutText = document.getElementById('maxFanout').value;
-      const maxFanout = maxFanoutText ? parseInt(maxFanoutText, 10) : undefined;
-      return {
-        viewIds,
-        frontier: seeds.slice(),
-        perViewExclude,
-        depth,
-        lang,
-        maxFanout
-      };
-    }
-
-    // ---------- API call ----------
-    async function apiStep(body) {
-      const res = await fetch(`${apiBase}/api/traverseStepMulti`, {
-        method: 'POST',
-        headers: { 'Content-Type':'application/json' },
-        body: JSON.stringify(body)
-      });
-      if (!res.ok) throw new Error(`API ${res.status} ${await res.text()}`);
-      return res.json(); // { edges, nextFrontier }
-    }
-
-    // ---------- Button handlers ----------
-    document.getElementById('run').addEventListener('click', async () => {
-      const payload = buildPayloadFromUI();
-      try {
-        const { edges, nextFrontier } = await apiStep(payload);
-        renderEdges(edges || []);
-        currentFrontier = (nextFrontier || []).slice();
-
-        // Maintain per-view exclude client-side for next requests
-        if (Array.isArray(payload.viewIds)) {
-          for (const v of payload.viewIds) {
-            for (const f of currentFrontier) addExclude(v, f.col, f.val);
-          }
-        }
-      } catch (err) {
-        console.error(err);
-        alert(err.message);
       }
-    });
 
-    let isExpanding = false;
-    async function expandFromNode(n) {
-      if (!n || isExpanding) return;
-      isExpanding = true;
-      const payload = buildPayloadFromUI();
-      payload.frontier = [{ col: n.col, val: String(n.val) }];
-      try {
-        const { edges, nextFrontier } = await apiStep(payload);
-        renderEdges(edges || []);
-        currentFrontier = (nextFrontier || []).slice();
-        if (Array.isArray(payload.viewIds)) {
-          for (const v of payload.viewIds) {
-            for (const f of currentFrontier) addExclude(v, f.col, f.val);
-          }
+      // Collapse reverse edges into one "bidirectional" edge in the UI
+      function ensureEdge(row) {
+        const source = nodeId(row.from_col, row.from_val);
+        const target = nodeId(row.to_col, row.to_val);
+
+        // Ensure endpoint nodes exist (with supplied labels/colors)
+        ensureNode({
+          col: row.from_col,
+          val: row.from_val,
+          text: row.from_text,
+          color: row.from_color,
+          type: row.from_type,
+        });
+        ensureNode({
+          col: row.to_col,
+          val: row.to_val,
+          text: row.to_text,
+          color: row.to_color,
+          type: row.to_type,
+        });
+
+        const id = edgeId(row.from_col, row.from_val, row.to_col, row.to_val);
+        const revId = edgeId(
+          row.to_col,
+          row.to_val,
+          row.from_col,
+          row.from_val
+        );
+
+        // if this exact edge exists, return it
+        let e = cy.getElementById(id);
+        if (!e.empty()) return e;
+
+        // if reverse edge exists, upgrade it to bidirectional
+        const rev = cy.getElementById(revId);
+        if (!rev.empty()) {
+          rev.data("bidirectional", true);
+          return rev;
         }
-      } catch (err) {
-        console.error(err);
-        alert(err.message);
-      } finally {
-        isExpanding = false;
+
+        // otherwise create a normal directed edge
+        return cy.add({ group: "edges", data: { id, source, target } });
       }
-    }
 
-    cy.on('select', 'node', async (evt) => {
-      const n = evt.target.data();
-      await expandFromNode(n);
-    });
+      // ---------- Perf helpers ----------
+      let layoutTimer = null;
+      function relayout() {
+        clearTimeout(layoutTimer);
+        const name = document.getElementById("layout").value;
+        layoutTimer = setTimeout(() => {
+          cy.layout({ name, animate: true, fit: true, padding: 20 }).run();
+        }, 50); // debounce a bit
+      }
 
-    document.getElementById('clear').addEventListener('click', () => {
-      cy.elements().remove();
-      currentFrontier = [];
-      perViewExclude = [];
-      perViewExcludeSet = new Set();
-      seeds = [];
-      renderSeedList();
-    });
+      function setEdgeStyleForSize() {
+        const many = cy.edges().length > 1000;
+        cy.style()
+          .selector("edge")
+          .style({
+            width: 2,
+            "curve-style": many ? "haystack" : "bezier",
+            "target-arrow-shape": many ? "none" : "triangle",
+            "line-color": "#475569",
+            "target-arrow-color": "#475569",
+          })
+          .selector("edge[bidirectional]")
+          .style({ "source-arrow-shape": many ? "none" : "triangle" })
+          .update();
+      }
 
-    // ----- View IDs multiselect -----
-    let availableViews = [];
-    const viewSelected = new Set();
-    const viewContainer = document.getElementById('view-select');
-    const viewMenu = document.getElementById('view-dropdown');
-    const viewBtn = document.getElementById('view-dropdown-btn');
+      function adjustLabels() {
+        const many = cy.nodes().length > 1500;
+        cy.style()
+          .selector("node")
+          .style({
+            label: many ? "" : "data(label)",
+            "min-zoomed-font-size": many ? 8 : 0,
+          })
+          .update();
+      }
 
-    function updateViewButton() {
-      const list = Array.from(viewSelected).sort((a,b)=>a-b);
-      viewBtn.textContent = list.length ? `Selected: ${list.join(',')}` : 'Select views';
-    }
+      // ---------- State maintained in the page ----------
+      let currentFrontier = [];
+      let perViewExclude = [];
+      let perViewExcludeSet = new Set();
+      function addExclude(viewId, col, val) {
+        const key = `${viewId}|${col}|${String(val)}`;
+        if (perViewExcludeSet.has(key)) return;
+        perViewExcludeSet.add(key);
+        perViewExclude.push({ ViewID: viewId, col, val: String(val) });
+      }
+      let seeds = [];
 
-    function renderViewMenu() {
-      viewMenu.innerHTML = '';
-      const lang = document.getElementById('lang').value || 'en';
-      availableViews.forEach(v => {
-        const label = document.createElement('label');
-        const cb = document.createElement('input');
-        cb.type = 'checkbox';
-        cb.value = String(v.id);
-        cb.checked = viewSelected.has(v.id);
-        cb.addEventListener('change', () => {
-          if (cb.checked) viewSelected.add(v.id); else viewSelected.delete(v.id);
+      function renderEdges(rows) {
+        cy.batch(() => {
+          rows.forEach(ensureEdge);
+        }); // batch DOM ops
+        relayout();
+      }
+
+      function renderSeedList() {
+        const ul = document.getElementById("seed-list");
+        ul.innerHTML = "";
+        seeds.forEach((s, idx) => {
+          const li = document.createElement("li");
+          li.className = "hint";
+          li.style.margin = "2px 0";
+          li.textContent = `${s.col} = ${s.val}`;
+          const btn = document.createElement("button");
+          btn.textContent = "Remove";
+          btn.style.marginLeft = "8px";
+          btn.addEventListener("click", () => {
+            seeds.splice(idx, 1);
+            renderSeedList();
+          });
+          li.appendChild(btn);
+          ul.appendChild(li);
+        });
+      }
+
+      document.getElementById("add-seed").addEventListener("click", () => {
+        const col = (document.getElementById("seed-col").value || "").trim();
+        const val = (document.getElementById("seed-val").value || "").trim();
+        if (!col || !val) {
+          alert("Enter both Column and Value.");
+          return;
+        }
+        seeds.push({ col, val });
+        document.getElementById("seed-col").value = "";
+        document.getElementById("seed-val").value = "";
+        renderSeedList();
+      });
+
+      document.getElementById("clear-seeds").addEventListener("click", () => {
+        seeds = [];
+        renderSeedList();
+      });
+
+      function buildPayloadFromUI() {
+        const viewIds = getSelectedViewIds();
+        const depth = Math.max(
+          1,
+          parseInt(document.getElementById("depth").value || "1", 10)
+        );
+        const lang = document.getElementById("lang").value;
+        const maxFanoutText = document.getElementById("maxFanout").value;
+        const maxFanout = maxFanoutText
+          ? parseInt(maxFanoutText, 10)
+          : undefined;
+        return {
+          viewIds,
+          frontier: seeds.slice(),
+          perViewExclude,
+          depth,
+          lang,
+          maxFanout,
+        };
+      }
+
+      // ---------- API call ----------
+      async function apiStep(body) {
+        const res = await fetch(`${apiBase}/api/traverseStepMulti`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        if (!res.ok) throw new Error(`API ${res.status} ${await res.text()}`);
+        return res.json(); // { edges, nextFrontier }
+      }
+
+      // ---------- Button handlers ----------
+      document.getElementById("run").addEventListener("click", async () => {
+        const payload = buildPayloadFromUI();
+        try {
+          const { edges, nextFrontier } = await apiStep(payload);
+          renderEdges(edges || []);
+          setEdgeStyleForSize();
+          adjustLabels();
+
+          currentFrontier = (nextFrontier || []).slice();
+
+          // Maintain per-view exclude client-side for next requests
+          if (Array.isArray(payload.viewIds)) {
+            for (const v of payload.viewIds) {
+              for (const f of currentFrontier) addExclude(v, f.col, f.val);
+            }
+          }
+        } catch (err) {
+          console.error(err);
+          alert(err.message);
+        }
+      });
+
+      let isExpanding = false;
+      async function expandFromNode(n) {
+        if (!n || isExpanding) return;
+        isExpanding = true;
+        const payload = buildPayloadFromUI();
+        payload.frontier = [{ col: n.col, val: String(n.val) }];
+        try {
+          const { edges, nextFrontier } = await apiStep(payload);
+          renderEdges(edges || []);
+          setEdgeStyleForSize();
+          adjustLabels();
+
+          currentFrontier = (nextFrontier || []).slice();
+          if (Array.isArray(payload.viewIds)) {
+            for (const v of payload.viewIds) {
+              for (const f of currentFrontier) addExclude(v, f.col, f.val);
+            }
+          }
+        } catch (err) {
+          console.error(err);
+          alert(err.message);
+        } finally {
+          isExpanding = false;
+        }
+      }
+
+      cy.on("select", "node", async (evt) => {
+        const n = evt.target.data();
+        await expandFromNode(n);
+      });
+
+      document.getElementById("clear").addEventListener("click", () => {
+        cy.elements().remove();
+        currentFrontier = [];
+        perViewExclude = [];
+        perViewExcludeSet = new Set();
+        seeds = [];
+        renderSeedList();
+        setEdgeStyleForSize();
+        adjustLabels();
+      });
+
+      // ----- View IDs multiselect -----
+      let availableViews = [];
+      const viewSelected = new Set();
+      const viewContainer = document.getElementById("view-select");
+      const viewMenu = document.getElementById("view-dropdown");
+      const viewBtn = document.getElementById("view-dropdown-btn");
+
+      function updateViewButton() {
+        const list = Array.from(viewSelected).sort((a, b) => a - b);
+        viewBtn.textContent = list.length
+          ? `Selected: ${list.join(",")}`
+          : "Select views";
+      }
+
+      function renderViewMenu() {
+        viewMenu.innerHTML = "";
+        const lang = document.getElementById("lang").value || "en";
+        availableViews.forEach((v) => {
+          const label = document.createElement("label");
+          const cb = document.createElement("input");
+          cb.type = "checkbox";
+          cb.value = String(v.id);
+          cb.checked = viewSelected.has(v.id);
+          cb.addEventListener("change", () => {
+            if (cb.checked) viewSelected.add(v.id);
+            else viewSelected.delete(v.id);
+            updateViewButton();
+          });
+          const span = document.createElement("span");
+          const labelText =
+            lang === "ar"
+              ? v.descriptionAr || v.nameAr || `View ${v.id}`
+              : v.descriptionEn || v.nameEn || `View ${v.id}`;
+          span.textContent = labelText;
+          label.appendChild(cb);
+          label.appendChild(span);
+          viewMenu.appendChild(label);
+        });
+      }
+
+      function getSelectedViewIds() {
+        return Array.from(viewSelected).sort((a, b) => a - b);
+      }
+
+      viewBtn.addEventListener("click", () => {
+        const open = viewContainer.classList.toggle("open");
+        if (open) renderViewMenu();
+      });
+
+      document.addEventListener("click", (e) => {
+        if (!viewContainer.contains(e.target)) {
+          viewContainer.classList.remove("open");
+        }
+      });
+
+      async function loadViews() {
+        try {
+          const res = await fetch(`${apiBase}/api/views`);
+          if (!res.ok) throw new Error(`Views API ${res.status}`);
+          const arr = await res.json();
+          availableViews = Array.isArray(arr)
+            ? arr.map((v) => ({
+                id: v.id,
+                nameEn: v.nameEn,
+                nameAr: v.nameAr,
+                descriptionEn: v.descriptionEn,
+                descriptionAr: v.descriptionAr,
+              }))
+            : [];
+          // Preselect the first two if nothing selected yet
+          if (viewSelected.size === 0) {
+            availableViews.slice(0, 2).forEach((v) => viewSelected.add(v.id));
+          }
           updateViewButton();
-        });
-        const span = document.createElement('span');
-        const labelText = (lang === 'ar'
-          ? (v.descriptionAr || v.nameAr || `View ${v.id}`)
-          : (v.descriptionEn || v.nameEn || `View ${v.id}`));
-        span.textContent = labelText;
-        label.appendChild(cb);
-        label.appendChild(span);
-        viewMenu.appendChild(label);
-      });
-    }
-
-    function getSelectedViewIds() {
-      return Array.from(viewSelected).sort((a,b)=>a-b);
-    }
-
-    viewBtn.addEventListener('click', () => {
-      const open = viewContainer.classList.toggle('open');
-      if (open) renderViewMenu();
-    });
-
-    document.addEventListener('click', (e) => {
-      if (!viewContainer.contains(e.target)) {
-        viewContainer.classList.remove('open');
-      }
-    });
-
-    async function loadViews() {
-      try {
-        const res = await fetch(`${apiBase}/api/views`);
-        if (!res.ok) throw new Error(`Views API ${res.status}`);
-        const arr = await res.json();
-        availableViews = Array.isArray(arr) ? arr.map(v => ({
-          id: v.id,
-          nameEn: v.nameEn,
-          nameAr: v.nameAr,
-          descriptionEn: v.descriptionEn,
-          descriptionAr: v.descriptionAr
-        })) : [];
-        // Preselect the first two if nothing selected yet
-        if (viewSelected.size === 0) {
-          availableViews.slice(0, 2).forEach(v => viewSelected.add(v.id));
+          renderViewMenu();
+        } catch (e) {
+          console.error("Failed to load views:", e);
+          // Fallback: keep empty list, user can still enter seeds and run (server will error if viewIds empty)
+          updateViewButton();
         }
-        updateViewButton();
-        renderViewMenu();
-      } catch (e) {
-        console.error('Failed to load views:', e);
-        // Fallback: keep empty list, user can still enter seeds and run (server will error if viewIds empty)
-        updateViewButton();
       }
-    }
 
-    // Re-render menu labels when language changes
-    document.getElementById('lang').addEventListener('change', () => {
-      if (viewContainer.classList.contains('open')) renderViewMenu();
-    });
+      // Re-render menu labels when language changes
+      document.getElementById("lang").addEventListener("change", () => {
+        if (viewContainer.classList.contains("open")) renderViewMenu();
+      });
 
-    loadViews();
-    updateViewButton();
-    renderViewMenu();
+      loadViews();
+      updateViewButton();
+      renderViewMenu();
 
-    // Initialize filters UI
-    renderSeedList();
-  </script>
-</body>
+      // Initialize filters UI
+      renderSeedList();
+    </script>
+  </body>
 </html>
