@@ -1,0 +1,180 @@
+using System.Data;
+using Microsoft.Data.SqlClient;
+using Microsoft.Extensions.FileProviders;
+
+var builder = WebApplication.CreateBuilder(args);
+
+// Build connection string from environment if provided, else appsettings
+string BuildConnString()
+{
+    var server = Environment.GetEnvironmentVariable("SQL_SERVER");
+    var db = Environment.GetEnvironmentVariable("SQL_DATABASE");
+    var trusted = (Environment.GetEnvironmentVariable("SQL_TRUSTED") ?? "true").ToLowerInvariant() == "true";
+    var user = Environment.GetEnvironmentVariable("SQL_USER");
+    var pwd = Environment.GetEnvironmentVariable("SQL_PASSWORD");
+    var encrypt = (Environment.GetEnvironmentVariable("SQL_ENCRYPT") ?? "false").ToLowerInvariant() == "true";
+
+    if (!string.IsNullOrWhiteSpace(server) && !string.IsNullOrWhiteSpace(db))
+    {
+        var csb = new SqlConnectionStringBuilder
+        {
+            DataSource = server,
+            InitialCatalog = db,
+            IntegratedSecurity = trusted,
+            Encrypt = encrypt,
+            TrustServerCertificate = !encrypt,
+            ApplicationName = "db-data-explorer"
+        };
+        if (!trusted)
+        {
+            if (string.IsNullOrWhiteSpace(user) || string.IsNullOrWhiteSpace(pwd))
+                throw new InvalidOperationException("SQL_TRUSTED=false but SQL_USER/SQL_PASSWORD not set.");
+            csb.UserID = user;
+            csb.Password = pwd;
+        }
+        return csb.ConnectionString;
+    }
+    return builder.Configuration.GetConnectionString("Default")!;
+}
+
+var connStr = BuildConnString();
+
+builder.Services.AddCors(options =>
+{
+    options.AddDefaultPolicy(p => p.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod());
+});
+
+var app = builder.Build();
+
+// Serve static files from repo root so existing index.html works
+var repoRoot = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, ".."));
+app.UseDefaultFiles(new DefaultFilesOptions { FileProvider = new PhysicalFileProvider(repoRoot) });
+app.UseStaticFiles(new StaticFileOptions { FileProvider = new PhysicalFileProvider(repoRoot) });
+app.UseCors();
+
+app.MapGet("/health", async () =>
+{
+    try
+    {
+        await using var c = new SqlConnection(connStr);
+        await c.OpenAsync();
+        await using var cmd = new SqlCommand("SELECT 1", c);
+        await cmd.ExecuteScalarAsync();
+        return Results.Json(new { ok = true });
+    }
+    catch (Exception ex)
+    {
+        return Results.Json(new { ok = false, error = ex.Message }, statusCode: 500);
+    }
+});
+
+app.MapPost("/api/traverseStepMulti", async (HttpRequest http) =>
+{
+    try
+    {
+        var payload = await http.ReadFromJsonAsync<Payload>() ?? new Payload();
+        if (payload.Depth < 1) return Results.BadRequest(new { error = "`depth` must be >= 1" });
+
+        await using var c = new SqlConnection(connStr);
+        await c.OpenAsync();
+        await using var cmd = new SqlCommand("dbgraph.TraverseStep_MultiViews_PerViewExclude_Lang", c)
+        {
+            CommandType = CommandType.StoredProcedure
+        };
+
+        cmd.Parameters.Add(new SqlParameter("@ViewIDs", SqlDbType.Structured)
+        { TypeName = "dbgraph.IntList", Value = ToIntList(payload.ViewIds) });
+        cmd.Parameters.Add(new SqlParameter("@Frontier", SqlDbType.Structured)
+        { TypeName = "dbgraph.ColValPair", Value = ToColValPair(payload.Frontier) });
+        cmd.Parameters.Add(new SqlParameter("@PerViewExclude", SqlDbType.Structured)
+        { TypeName = "dbgraph.ViewColValPair", Value = ToViewColValPair(payload.PerViewExclude) });
+        cmd.Parameters.Add(new SqlParameter("@Depth", SqlDbType.Int) { Value = payload.Depth });
+        var lang = (payload.Lang ?? "en");
+        cmd.Parameters.Add(new SqlParameter("@Lang", SqlDbType.NVarChar, 2) { Value = lang[..Math.Min(2, lang.Length)] });
+        cmd.Parameters.Add(new SqlParameter("@MaxFanout", SqlDbType.Int) { Value = (object?)payload.MaxFanout ?? DBNull.Value });
+
+        await using var rdr = await cmd.ExecuteReaderAsync();
+        var edges = ReadRows(rdr);
+        await rdr.NextResultAsync();
+        var nextFrontier = ReadRows(rdr);
+        return Results.Json(new { edges, nextFrontier });
+    }
+    catch (Exception ex)
+    {
+        return Results.Json(new { error = ex.Message }, statusCode: 500);
+    }
+});
+
+var port = Environment.GetEnvironmentVariable("PORT");
+if (!string.IsNullOrWhiteSpace(port))
+{
+    app.Urls.Add($"http://localhost:{port}");
+}
+
+app.Run();
+
+static DataTable ToIntList(IEnumerable<int>? ids)
+{
+    var t = new DataTable();
+    t.Columns.Add("id", typeof(int));
+    foreach (var v in ids ?? Array.Empty<int>()) t.Rows.Add(v);
+    return t;
+}
+
+static DataTable ToColValPair(IEnumerable<ColVal>? rows)
+{
+    var t = new DataTable();
+    t.Columns.Add("col", typeof(string));
+    t.Columns.Add("val", typeof(string));
+    foreach (var r in rows ?? Array.Empty<ColVal>())
+    {
+        var col = (r.col ?? string.Empty).Trim();
+        var val = (r.val ?? string.Empty).ToString();
+        if (string.IsNullOrWhiteSpace(col)) continue;
+        t.Rows.Add(col, val);
+    }
+    return t;
+}
+
+static DataTable ToViewColValPair(IEnumerable<ViewColVal>? rows)
+{
+    var t = new DataTable();
+    t.Columns.Add("ViewID", typeof(int));
+    t.Columns.Add("col", typeof(string));
+    t.Columns.Add("val", typeof(string));
+    foreach (var r in rows ?? Array.Empty<ViewColVal>())
+    {
+        if (!r.ViewID.HasValue) continue;
+        var col = (r.col ?? string.Empty).Trim();
+        if (string.IsNullOrWhiteSpace(col)) continue;
+        var val = (r.val ?? string.Empty).ToString();
+        t.Rows.Add(r.ViewID.Value, col, val);
+    }
+    return t;
+}
+
+static List<Dictionary<string, object?>> ReadRows(SqlDataReader rdr)
+{
+    var list = new List<Dictionary<string, object?>>();
+    while (rdr.Read())
+    {
+        var row = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
+        for (int i = 0; i < rdr.FieldCount; i++)
+            row[rdr.GetName(i)] = rdr.IsDBNull(i) ? null : rdr.GetValue(i);
+        list.Add(row);
+    }
+    return list;
+}
+
+public sealed record Payload
+{
+    public List<int>? ViewIds { get; set; }
+    public List<ColVal>? Frontier { get; set; }
+    public List<ViewColVal>? PerViewExclude { get; set; }
+    public int Depth { get; set; } = 1;
+    public string? Lang { get; set; }
+    public int? MaxFanout { get; set; }
+}
+
+public sealed record ColVal(string col, object? val);
+public sealed record ViewColVal(int? ViewID, string col, object? val);
