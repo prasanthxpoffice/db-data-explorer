@@ -11,3 +11,4 @@ node_modules/
 .vscode/
 *.log
 dist/
+db/import-log.txt

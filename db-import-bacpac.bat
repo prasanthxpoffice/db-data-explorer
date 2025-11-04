@@ -26,6 +26,12 @@ echo   DB    : %DB%
 echo   In    : %INFILE%
 echo.
 
+REM Try to start LocalDB (best effort)
+where sqllocaldb >nul 2>&1
+if %ERRORLEVEL% EQU 0 (
+  sqllocaldb start MSSQLLocalDB >nul 2>&1
+)
+
 if not exist "%INFILE%" (
   echo [ERROR] Bacpac not found: "%INFILE%"
   echo [ERROR] Bacpac not found: "%INFILE%" >> "%LOG%"
@@ -75,8 +81,7 @@ echo Importing "%INFILE%" into database "%DB%" on "%SERVER%" ... >> "%LOG%"
   /Action:Import ^
   /TargetServerName:"%SERVER%" ^
   /TargetDatabaseName:"%DB%" ^
-  /SourceFile:"%INFILE%" ^
-  /p:DatabaseMaximumSize=1024 >> "%LOG%" 2>&1
+  /SourceFile:"%INFILE%" >> "%LOG%" 2>&1
 
 set RC=%ERRORLEVEL%
 echo SqlPackage exit code: %RC% >> "%LOG%"

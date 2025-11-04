@@ -71,6 +71,37 @@ app.MapGet("/health", async () =>
     }
 });
 
+app.MapGet("/api/views", async (HttpRequest http) =>
+{
+    try
+    {
+        await using var c = new SqlConnection(connStr);
+        await c.OpenAsync();
+        const string sql = @"SELECT ViewID, ViewDescriptionEn, ViewDescriptionAr, ViewNameEn, ViewNameAr
+                              FROM dbgraph.ViewRegistry
+                              ORDER BY ViewID";
+        await using var cmd = new SqlCommand(sql, c);
+        await using var rdr = await cmd.ExecuteReaderAsync();
+        var list = new List<Dictionary<string, object?>>();
+        while (await rdr.ReadAsync())
+        {
+            list.Add(new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["id"] = rdr.GetInt32(0),
+                ["descriptionEn"] = rdr.IsDBNull(1) ? null : rdr.GetString(1),
+                ["descriptionAr"] = rdr.IsDBNull(2) ? null : rdr.GetString(2),
+                ["nameEn"] = rdr.IsDBNull(3) ? null : rdr.GetString(3),
+                ["nameAr"] = rdr.IsDBNull(4) ? null : rdr.GetString(4)
+            });
+        }
+        return Results.Json(list);
+    }
+    catch (Exception ex)
+    {
+        return Results.Json(new { error = ex.Message }, statusCode: 500);
+    }
+});
+
 app.MapPost("/api/traverseStepMulti", async (HttpRequest http) =>
 {
     try
@@ -145,12 +176,16 @@ static DataTable ToViewColValPair(IEnumerable<ViewColVal>? rows)
     t.Columns.Add("ViewID", typeof(int));
     t.Columns.Add("col", typeof(string));
     t.Columns.Add("val", typeof(string));
+    var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
     foreach (var r in rows ?? Array.Empty<ViewColVal>())
     {
         if (!r.ViewID.HasValue) continue;
         var col = (r.col ?? string.Empty).Trim();
         if (string.IsNullOrWhiteSpace(col)) continue;
         var val = (r.val ?? string.Empty).ToString();
+        var key = $"{r.ViewID.Value}|{col}|{val}";
+        if (seen.Contains(key)) continue;
+        seen.Add(key);
         t.Rows.Add(r.ViewID.Value, col, val);
     }
     return t;

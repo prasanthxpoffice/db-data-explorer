@@ -2,78 +2,88 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>db-data-explorer • Graph Viewer</title>
+  <title>db-data-explorer · Graph Viewer</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <!-- Cytoscape -->
   <script src="https://unpkg.com/cytoscape@3.28.1/dist/cytoscape.min.js"></script>
+  <link rel="stylesheet" href="css/styles.css" />
   <style>
-    :root { --bg:#0f172a; --panel:#111827; --ink:#e5e7eb; --muted:#9ca3af; }
-    html, body { height:100%; margin:0; background:var(--bg); color:var(--ink); font-family:Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
-    .wrap { display:grid; grid-template-columns: 360px 1fr; height:100%; gap:12px; padding:12px; box-sizing:border-box; }
-    .panel { background:var(--panel); border:1px solid #1f2937; border-radius:14px; padding:14px; display:flex; flex-direction:column; gap:12px; }
-    h1 { font-size:18px; margin:0 0 4px 0; color:#f9fafb; }
-    label { display:block; font-size:12px; color:var(--muted); margin-bottom:6px; }
-    textarea, input, select { width:100%; background:#0b1220; color:#e5e7eb; border:1px solid #243044; border-radius:10px; padding:10px; font-size:12px; resize:vertical; }
-    .row { display:grid; grid-template-columns: 1fr 1fr; gap:8px; }
-    .btns { display:flex; gap:8px; flex-wrap:wrap; }
-    button { background:#1f2937; color:#e5e7eb; border:1px solid #374151; padding:10px 12px; border-radius:10px; cursor:pointer; font-size:13px; }
-    button:hover { background:#2a3648; }
-    #cy { background:#0b1220; border:1px solid #1f2937; border-radius:14px; }
-    .hint { color:#9ca3af; font-size:12px; }
-    .tag { display:inline-block; padding:2px 6px; border:1px solid #334155; border-radius:999px; font-size:11px; color:#cbd5e1; background:#0b1220; }
+    /* Small inline tweaks for list buttons */
+    #seed-list button { font-size: 11px; padding: 2px 6px; }
   </style>
-</head>
+  </head>
 <body>
   <div class="wrap">
     <div class="panel">
       <h1>db-data-explorer</h1>
+
       <div>
-        <label>Mode</label>
+        <label>API</label>
+        <div class="hint"><span class="tag">POST /api/traverseStepMulti</span></div>
+      </div>
+
+      <div>
+        <label>Filters</label>
         <div class="row">
-          <label class="hint"><input type="radio" name="mode" value="mock" checked> Mock (built-in sample)</label>
-          <label class="hint"><input type="radio" name="mode" value="api"> API (<span class="tag">POST /api/traverseStepMulti</span>)</label>
+          <div>
+            <label>View IDs</label>
+            <div class="multiselect" id="view-select">
+              <button id="view-dropdown-btn" type="button">Selected: 1,2</button>
+              <div class="multiselect-menu" id="view-dropdown"></div>
+            </div>
+          </div>
+          <div>
+            <label>Depth</label>
+            <input id="depth" type="number" min="1" step="1" value="1" />
+          </div>
         </div>
-      </div>
+        <div class="row">
+          <div>
+            <label>Max Fanout (optional)</label>
+            <input id="maxFanout" type="number" min="1" step="1" value="200" />
+          </div>
+          <div></div>
+        </div>
+        <div class="row">
+          <div>
+            <label>Language</label>
+            <select id="lang">
+              <option value="en" selected>English</option>
+              <option value="ar">Arabic</option>
+            </select>
+          </div>
+          <div>
+            <label>Layout</label>
+            <select id="layout">
+              <option value="cose" selected>cose</option>
+              <option value="breadthfirst">breadthfirst</option>
+              <option value="concentric">concentric</option>
+              <option value="grid">grid</option>
+            </select>
+          </div>
+        </div>
 
-      <div>
-        <label>Seeds JSON (sent in API mode)</label>
-        <textarea id="seed" rows="7">{
-  "viewIds": [1, 2],
-  "frontier": [{"col":"ID_AID","val":"1"}],
-  "perViewExclude": [],
-  "depth": 1,
-  "lang": "en",
-  "maxFanout": 200
-}</textarea>
-        <div class="hint">Nodes are unique by <code>(col,val)</code> → id = <code>${col}:${val}</code>. Edges are unique by <code>source->target</code>.</div>
-      </div>
-
-      <div class="row">
         <div>
-          <label>Language</label>
-          <select id="lang">
-            <option value="en" selected>English</option>
-            <option value="ar">Arabic</option>
-          </select>
+          <label>Seeds (Frontier)</label>
+          <div class="row">
+            <input id="seed-col" type="text" placeholder="Column (e.g. ID_AID)" />
+            <input id="seed-val" type="text" placeholder="Value (e.g. 1)" />
+          </div>
+          <div class="btns" style="margin-top:8px;">
+            <button id="add-seed" type="button">Add Seed</button>
+            <button id="clear-seeds" type="button">Clear Seeds</button>
+          </div>
+          <div class="hint">Seeds are <code>{ col, val }</code> pairs. Example: col <code>ID_AID</code>, val <code>1</code>.</div>
+          <ul id="seed-list" style="list-style:none; padding-left:0; margin-top:8px;"></ul>
         </div>
-        <div>
-          <label>Layout</label>
-          <select id="layout">
-            <option value="cose" selected>cose</option>
-            <option value="breadthfirst">breadthfirst</option>
-            <option value="concentric">concentric</option>
-            <option value="grid">grid</option>
-          </select>
+
+        <div class="btns">
+          <button id="run">Run Step</button>
+          <button id="clear">Clear Graph</button>
         </div>
+        <div class="hint">Tip: select a node in the graph to auto-expand.</div>
       </div>
 
-      <div class="btns">
-        <button id="run">Run Step</button>
-        <button id="expand">Expand Selected Node</button>
-        <button id="clear">Clear Graph</button>
-      </div>
-
-      <div class="hint">Tip: click a node, then “Expand Selected Node”. Already existing nodes/edges are not re-created.</div>
     </div>
 
     <div id="cy"></div>
@@ -81,6 +91,8 @@
 
   <script>
     // ---------- Graph setup ----------
+    // Base URL for API calls. If opened via file://, default to localhost:3000.
+    const apiBase = (location.protocol === 'file:' ? 'http://localhost:3000' : '');
     const cy = cytoscape({
       container: document.getElementById('cy'),
       style: [
@@ -148,47 +160,77 @@
       cy.layout({ name, animate: true, fit: true, padding: 20 }).run();
     }
 
-    // ---------- MOCK DATA (for standalone demo) ----------
-    const mock = {
-      edges: [
-        // Member(1) -> company(1)
-        { from_col:'ID_AID', from_val:'1', from_type:'Member', from_text:'Prasanth', from_color:'#0000FF',
-          to_col:'ID_BID',   to_val:'1',   to_type:'company', to_text:'GAL',        to_color:'#00FF00' },
-
-        // Member(1) -> Car(11), Car(12)
-        { from_col:'ID_AID', from_val:'1', from_type:'Member', from_text:'Prasanth', from_color:'#0000FF',
-          to_col:'ID_CID',   to_val:'11',  to_type:'Car',     to_text:'Rav 4',      to_color:'#FFFF00' },
-        { from_col:'ID_AID', from_val:'1', from_type:'Member', from_text:'Prasanth', from_color:'#0000FF',
-          to_col:'ID_CID',   to_val:'12',  to_type:'Car',     to_text:'Yaris',      to_color:'#FFFF00' },
-
-        // Member(1) -> Spouse(1), Son(2), Son(3)
-        { from_col:'ID_AID', from_val:'1', from_type:'Member', from_text:'Prasanth', from_color:'#0000FF',
-          to_col:'ID_DID',   to_val:'1',   to_type:'Spouse',  to_text:'Mary',       to_color:'#008080' },
-        { from_col:'ID_AID', from_val:'1', from_type:'Member', from_text:'Prasanth', from_color:'#0000FF',
-          to_col:'ID_DID',   to_val:'2',   to_type:'Son',     to_text:'Johaan',     to_color:'#FFA500' },
-        { from_col:'ID_AID', from_val:'1', from_type:'Member', from_text:'Prasanth', from_color:'#0000FF',
-          to_col:'ID_DID',   to_val:'3',   to_type:'Son',     to_text:'Abram',      to_color:'#FFA500' }
-      ],
-      nextFrontier: [
-        { col:'ID_BID', val:'1' },
-        { col:'ID_CID', val:'11' }, { col:'ID_CID', val:'12' },
-        { col:'ID_DID', val:'1' },  { col:'ID_DID', val:'2' }, { col:'ID_DID', val:'3' }
-      ]
-    };
-
     // ---------- State maintained in the page ----------
-    let currentFrontier = mock.nextFrontier.slice();   // will be replaced in API mode
-    let perViewExclude = [];                           // client keeps per-view exclude if you want to use it
+    let currentFrontier = [];
+    let perViewExclude = [];
+    let perViewExcludeSet = new Set();
+    function addExclude(viewId, col, val) {
+      const key = `${viewId}|${col}|${String(val)}`;
+      if (perViewExcludeSet.has(key)) return;
+      perViewExcludeSet.add(key);
+      perViewExclude.push({ ViewID: viewId, col, val: String(val) });
+    }
+    let seeds = [];
 
-    // ---------- Render helpers ----------
     function renderEdges(rows) {
       rows.forEach(ensureEdge);
       relayout();
     }
 
+    function renderSeedList() {
+      const ul = document.getElementById('seed-list');
+      ul.innerHTML = '';
+      seeds.forEach((s, idx) => {
+        const li = document.createElement('li');
+        li.className = 'hint';
+        li.style.margin = '2px 0';
+        li.textContent = `${s.col} = ${s.val}`;
+        const btn = document.createElement('button');
+        btn.textContent = 'Remove';
+        btn.style.marginLeft = '8px';
+        btn.addEventListener('click', () => {
+          seeds.splice(idx, 1);
+          renderSeedList();
+        });
+        li.appendChild(btn);
+        ul.appendChild(li);
+      });
+    }
+
+    document.getElementById('add-seed').addEventListener('click', () => {
+      const col = (document.getElementById('seed-col').value || '').trim();
+      const val = (document.getElementById('seed-val').value || '').trim();
+      if (!col || !val) { alert('Enter both Column and Value.'); return; }
+      seeds.push({ col, val });
+      document.getElementById('seed-col').value = '';
+      document.getElementById('seed-val').value = '';
+      renderSeedList();
+    });
+
+    document.getElementById('clear-seeds').addEventListener('click', () => {
+      seeds = [];
+      renderSeedList();
+    });
+
+    function buildPayloadFromUI() {
+      const viewIds = getSelectedViewIds();
+      const depth = Math.max(1, parseInt(document.getElementById('depth').value || '1', 10));
+      const lang = document.getElementById('lang').value;
+      const maxFanoutText = document.getElementById('maxFanout').value;
+      const maxFanout = maxFanoutText ? parseInt(maxFanoutText, 10) : undefined;
+      return {
+        viewIds,
+        frontier: seeds.slice(),
+        perViewExclude,
+        depth,
+        lang,
+        maxFanout
+      };
+    }
+
     // ---------- API call ----------
     async function apiStep(body) {
-      const res = await fetch('/api/traverseStepMulti', {
+      const res = await fetch(`${apiBase}/api/traverseStepMulti`, {
         method: 'POST',
         headers: { 'Content-Type':'application/json' },
         body: JSON.stringify(body)
@@ -199,36 +241,16 @@
 
     // ---------- Button handlers ----------
     document.getElementById('run').addEventListener('click', async () => {
-      const mode = [...document.querySelectorAll('input[name="mode"]')].find(x => x.checked).value;
-      const lang = document.getElementById('lang').value;
-
-      if (mode === 'mock') {
-        renderEdges(mock.edges);
-        currentFrontier = mock.nextFrontier.slice();
-        return;
-      }
-
-      // API mode
-      let payload;
-      try {
-        payload = JSON.parse(document.getElementById('seed').value);
-      } catch (e) {
-        alert('Invalid JSON in Seeds.');
-        return;
-      }
-      payload.lang = lang;
-      // Keep per-view excludes in sync in API mode for parity with Expand
-      payload.perViewExclude = perViewExclude;
-
+      const payload = buildPayloadFromUI();
       try {
         const { edges, nextFrontier } = await apiStep(payload);
         renderEdges(edges || []);
         currentFrontier = (nextFrontier || []).slice();
 
-        // Optional: maintain per-view exclude client-side for next requests
+        // Maintain per-view exclude client-side for next requests
         if (Array.isArray(payload.viewIds)) {
           for (const v of payload.viewIds) {
-            for (const f of currentFrontier) perViewExclude.push({ ViewID: v, col: f.col, val: f.val });
+            for (const f of currentFrontier) addExclude(v, f.col, f.val);
           }
         }
       } catch (err) {
@@ -237,53 +259,130 @@
       }
     });
 
-    document.getElementById('expand').addEventListener('click', async () => {
-      const sel = cy.$('node:selected');
-      if (sel.size() !== 1) { alert('Select one node to expand.'); return; }
-      const n = sel[0].data(); // {id, col, val, ...}
-      const mode = [...document.querySelectorAll('input[name="mode"]')].find(x => x.checked).value;
-      const lang = document.getElementById('lang').value;
-
-      if (mode === 'mock') {
-        alert('Mock mode: use "Run Step" to see the demo edges.');
-        return;
-      }
-
-      // Build payload from the selected node and accumulated excludes
-      let payload;
-      try {
-        payload = JSON.parse(document.getElementById('seed').value);
-      } catch (e) {
-        alert('Invalid JSON in Seeds.');
-        return;
-      }
-      payload.lang = lang;
+    let isExpanding = false;
+    async function expandFromNode(n) {
+      if (!n || isExpanding) return;
+      isExpanding = true;
+      const payload = buildPayloadFromUI();
       payload.frontier = [{ col: n.col, val: String(n.val) }];
-      payload.perViewExclude = perViewExclude;
-
       try {
         const { edges, nextFrontier } = await apiStep(payload);
         renderEdges(edges || []);
         currentFrontier = (nextFrontier || []).slice();
         if (Array.isArray(payload.viewIds)) {
           for (const v of payload.viewIds) {
-            for (const f of currentFrontier) perViewExclude.push({ ViewID: v, col: f.col, val: f.val });
+            for (const f of currentFrontier) addExclude(v, f.col, f.val);
           }
         }
       } catch (err) {
         console.error(err);
         alert(err.message);
+      } finally {
+        isExpanding = false;
       }
+    }
+
+    cy.on('select', 'node', async (evt) => {
+      const n = evt.target.data();
+      await expandFromNode(n);
     });
 
     document.getElementById('clear').addEventListener('click', () => {
       cy.elements().remove();
       currentFrontier = [];
       perViewExclude = [];
+      perViewExcludeSet = new Set();
+      seeds = [];
+      renderSeedList();
     });
 
-    // Initial render in mock mode so you see something immediately:
-    renderEdges(mock.edges);
+    // ----- View IDs multiselect -----
+    let availableViews = [];
+    const viewSelected = new Set();
+    const viewContainer = document.getElementById('view-select');
+    const viewMenu = document.getElementById('view-dropdown');
+    const viewBtn = document.getElementById('view-dropdown-btn');
+
+    function updateViewButton() {
+      const list = Array.from(viewSelected).sort((a,b)=>a-b);
+      viewBtn.textContent = list.length ? `Selected: ${list.join(',')}` : 'Select views';
+    }
+
+    function renderViewMenu() {
+      viewMenu.innerHTML = '';
+      const lang = document.getElementById('lang').value || 'en';
+      availableViews.forEach(v => {
+        const label = document.createElement('label');
+        const cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.value = String(v.id);
+        cb.checked = viewSelected.has(v.id);
+        cb.addEventListener('change', () => {
+          if (cb.checked) viewSelected.add(v.id); else viewSelected.delete(v.id);
+          updateViewButton();
+        });
+        const span = document.createElement('span');
+        const labelText = (lang === 'ar'
+          ? (v.descriptionAr || v.nameAr || `View ${v.id}`)
+          : (v.descriptionEn || v.nameEn || `View ${v.id}`));
+        span.textContent = labelText;
+        label.appendChild(cb);
+        label.appendChild(span);
+        viewMenu.appendChild(label);
+      });
+    }
+
+    function getSelectedViewIds() {
+      return Array.from(viewSelected).sort((a,b)=>a-b);
+    }
+
+    viewBtn.addEventListener('click', () => {
+      const open = viewContainer.classList.toggle('open');
+      if (open) renderViewMenu();
+    });
+
+    document.addEventListener('click', (e) => {
+      if (!viewContainer.contains(e.target)) {
+        viewContainer.classList.remove('open');
+      }
+    });
+
+    async function loadViews() {
+      try {
+        const res = await fetch(`${apiBase}/api/views`);
+        if (!res.ok) throw new Error(`Views API ${res.status}`);
+        const arr = await res.json();
+        availableViews = Array.isArray(arr) ? arr.map(v => ({
+          id: v.id,
+          nameEn: v.nameEn,
+          nameAr: v.nameAr,
+          descriptionEn: v.descriptionEn,
+          descriptionAr: v.descriptionAr
+        })) : [];
+        // Preselect the first two if nothing selected yet
+        if (viewSelected.size === 0) {
+          availableViews.slice(0, 2).forEach(v => viewSelected.add(v.id));
+        }
+        updateViewButton();
+        renderViewMenu();
+      } catch (e) {
+        console.error('Failed to load views:', e);
+        // Fallback: keep empty list, user can still enter seeds and run (server will error if viewIds empty)
+        updateViewButton();
+      }
+    }
+
+    // Re-render menu labels when language changes
+    document.getElementById('lang').addEventListener('change', () => {
+      if (viewContainer.classList.contains('open')) renderViewMenu();
+    });
+
+    loadViews();
+    updateViewButton();
+    renderViewMenu();
+
+    // Initialize filters UI
+    renderSeedList();
   </script>
 </body>
 </html>

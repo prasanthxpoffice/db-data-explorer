@@ -1,177 +1,121 @@
 # db-data-explorer
 
-This project is a **SQL Server (LocalDB) + HTML/JS front‑end + Node.js API** for
-exploring data relationships across database views and rendering them in **Cytoscape.js**
-as a graph (nodes + edges).  
-Supports **multi‑view traversal**, **multi‑depth exploration**, and **English/Arabic** field names.
+A lightweight SQL Server (LocalDB) + HTML viewer + .NET API for exploring data relationships and rendering them as a graph in Cytoscape.js.
+
+Supports multi-view traversal, multi-depth exploration, and English/Arabic labels. The front-end can run in mock mode (no backend) or call the API for live data.
 
 ---
 
-## ✅ Project Structure
+## Project Structure
 
 ```
 db-data-explorer/
-│
-├── db/
-│   ├── export-bacpac.ps1      # Manual DB export (creates IAS.bacpac)
-│   ├── import-bacpac.ps1      # Manual DB import (restore IAS.bacpac)
-│   └── (ignored) *.mdf / *.ldf / *.bacpac
-│
-├── server/
-│   └── server.js              # Node.js API (calls stored proc)
-│
-├── wwwroot/
-│   └── index.html             # Front-end + Cytoscape.js
-│
-├── README.md
-└── .gitignore
+├─ db/
+│  ├─ export-bacpac.ps1     # Manual DB export (creates IAS.bacpac)
+│  ├─ import-bacpac.ps1     # Manual DB import (restores IAS.bacpac)
+│  ├─ resolve-sqlserver.ps1 # Picks a SQL Server (defaults to LocalDB)
+│  ├─ IAS.bacpac            # BACPAC snapshot (committed)
+│  └─ import-log.txt        # Import log (ignored by Git)
+├─ server-dotnet/
+│  ├─ Program.cs            # Minimal API (POST /api/traverseStepMulti)
+│  └─ appsettings.json      # Default connection string + Urls
+├─ index.html               # Front-end + Cytoscape.js (mock or API mode)
+├─ db-import-bacpac.bat     # Windows import helper (SqlPackage)
+├─ db-export-and-push.bat   # Windows export + git add/commit/push helper
+├─ start-server.bat         # Starts server-dotnet backend
+└─ .gitignore
 ```
 
 ---
 
-## 🧠 What it does
+## Prerequisites
 
-- Allows user to pick one or more views
-- Starts from one or more seed nodes (column + value)
-- Traverses relations (A → B → C … based on matching ID/Text columns)
-- Returns `nodes` and `edges` to render in Cytoscape.js
-- Avoids duplicates automatically
-- Fast execution using snapshot isolation + temporary hashed sets
+- Windows (for the .bat helpers; PowerShell scripts are cross-shell on Windows)
+- .NET 8 SDK for the backend
+- SQL Server LocalDB (installed with Visual Studio or as a component)
+- SqlPackage (on PATH or installed in a common location)
 
----
-
-## ⚠ Database files are NOT tracked
-
-`db/IAS.mdf`, `db/IAS_log.ldf`, and `db/*.bacpac` are ignored to prevent:
-
-- lock issues
-- large file commits
-- merge conflicts
-
-Instead, you **manually export/import** using BACPAC.
+Links: https://dotnet.microsoft.com/ and https://learn.microsoft.com/sql/tools/sqlpackage/sqlpackage-download
 
 ---
 
-## 📦 Manual DB Export (one PC → GitHub)
+## Running
 
-> Use when you want to sync DB changes
+1) Start the backend API (serves `index.html` too):
 
-Open PowerShell inside project root:
+```
+start-server.bat
+```
 
-```ps1
+or
+
+```
+cd server-dotnet
+dotnet run
+```
+
+The API binds to `http://localhost:3000` (see `server-dotnet/appsettings.json`). Open `http://localhost:3000` in your browser.
+
+2) Front-end modes:
+
+- Mock mode: uses built-in sample graph (no DB required)
+- API mode: posts to `POST /api/traverseStepMulti` on the .NET backend
+
+Switch modes using the radio buttons in the left panel.
+
+---
+
+## Database Snapshot Workflow (BACPAC)
+
+You commit the `db/IAS.bacpac` snapshot into Git. MDF/LDF are ignored.
+
+Export on a machine that made DB changes:
+
+```
 db/export-bacpac.ps1
-git add db/IAS.bacpac
-git commit -m "DB snapshot update"
-git push
+# or
+db-export-and-push.bat
 ```
 
-This creates:
+Import on another machine:
 
 ```
-db/IAS.bacpac
+db/import-bacpac.ps1           # default server (LocalDB) and DB name (IAS)
+# or with replace
+db/import-bacpac.ps1 -Replace
+
+# Batch alternative
+db-import-bacpac.bat           # uses defaults
+db-import-bacpac.bat \
+  "(localdb)\\MSSQLLocalDB" IAS db\\IAS.bacpac /REPLACE
 ```
 
-and pushes it.
+Both import helpers attempt to start LocalDB when available. The batch script writes a log to `db/import-log.txt`.
 
 ---
 
-## 📥 Manual DB Import (GitHub → second PC)
+## Configuration
 
-Open PowerShell:
-
-```ps1
-db/import-bacpac.ps1
-```
-
-Or manually using **SQL Server Management Studio**:
-
-```
-Right-click Databases → Import Data‑tier Application → Select IAS.bacpac
-```
+- Default connection string: `server-dotnet/appsettings.json`
+- Environment overrides (optional):
+  - `SQL_SERVER`, `SQL_DATABASE`
+  - `SQL_TRUSTED` (true/false), `SQL_USER`, `SQL_PASSWORD`
+  - `SQL_ENCRYPT` (true/false)
+  - `PORT` (overrides port for the API)
 
 ---
 
-## 🌐 Configure SQL LocalDB
+## Notes
 
-Ensure LocalDB exists:
-
-```
-sqllocaldb create "MSSQLLocalDB"
-sqllocaldb start "MSSQLLocalDB"
-```
-
-Connection string example (server.js):
-
-```
-Server=(localdb)\MSSQLLocalDB;
-Database=IAS;
-Trusted_Connection=True;
-MultipleActiveResultSets=True;
-```
+- `.gitignore` excludes `db/*.mdf`, `db/*.ldf`, classic backups, and `db/import-log.txt`.
+- Scripts resolve `SqlPackage` from PATH or common install locations; if not found, they print a clear error.
+- The API enables permissive CORS for development.
 
 ---
 
-## 🧪 Test DB Connection
+## Future Enhancements (optional)
 
-```ps1
-sqlcmd -S "(localdb)\MSSQLLocalDB" -Q "SELECT DB_NAME()"
-```
+- Auto-detect schema diffs
+- Push BACPAC only for tagged releases
+- Shared remote SQL DB option
 
-If output is `IAS`, you're good.
-
----
-
-## 🚀 Running the project
-
-```
-cd server
-npm install
-node server.js
-```
-
-Open browser:
-
-```
-http://localhost:3000
-```
-
----
-
-## 🗂 .gitignore
-
-```
-db/*.mdf
-db/*.ldf
-db/*.bacpac
-```
-
----
-
-## 💡 Workflow Summary
-
-| Action | You do |
-|--------|--------|
-| DB changed and you want to sync? | ✅ Run export-bacpac.ps1 manually |
-| Code changed? | ✅ Commit & push normally |
-| Working on another PC? | ✅ Run import-bacpac.ps1 |
-
----
-
-## ✨ No automation — full control
-
-You decided **not to automate DB export in commits**, so nothing happens unless you explicitly export.
-
----
-
-## 🧑‍💻 Future enhancements (optional)
-
-Just tell me when you want any of these:
-
-- Auto detect schema diffs
-- Option to push bacpac only on tagged releases
-- Remote shared SQL DB
-
----
-
-### Need help next?
-Just say: **"Next step"** 😊
