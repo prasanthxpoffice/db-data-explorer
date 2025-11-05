@@ -17,7 +17,8 @@
   </head>
   <body>
     <div class="wrap">
-      <div class="panel">
+      <div class="sidepanel left open" id="left-panel">
+        <div class="handle" id="left-toggle">❯</div>
         <h1>db-data-explorer</h1>
 
         <div>
@@ -80,6 +81,41 @@
             </div>
           </div>
 
+          <div style="margin-top:10px">
+            <label>Options</label>
+            <div class="row-3">
+              <div class="field">
+                <label>Min Edge Support</label>
+                <input id="minSupport" type="range" min="1" max="6" value="1" />
+              </div>
+              <div class="field inline">
+                <label>Hide Leaves</label>
+                <input id="hideLeaves" type="checkbox" />
+              </div>
+              <div class="field">
+                <label>Highlight Hubs (deg ≥)</label>
+                <input id="hubDeg" type="number" min="2" step="1" value="6" style="width:70px" />
+              </div>
+            </div>
+            
+            <div class="row-3" style="margin-top:6px">
+              <div class="field">
+                <label>Max Edges / Node</label>
+                <input id="fanoutLimit" type="number" min="1" step="1" value="200" style="width:80px" />
+                <button id="btnApplyFanout" type="button">Apply</button>
+              </div>
+              <div class="field">
+                <label>Label Threshold</label>
+                <input id="labelThresh" type="number" min="0" step="100" value="1500" style="width:80px" />
+              </div>
+              <div class="field"></div>
+            </div>
+            <div class="btns" style="margin-top:8px">
+              <button id="btnTidy" type="button">Tidy</button>
+              <button id="btnExportPng" type="button">Export PNG</button>
+            </div>
+          </div>
+
           <div>
             <label>Seeds (Frontier)</label>
             <div class="row">
@@ -112,14 +148,33 @@
             Tip: select a node in the graph to auto-expand.
           </div>
         </div>
-
-        <div id="details-panel" style="margin-top: 14px">
-          <label>Selection</label>
-          <div id="node-details" class="hint">No node selected.</div>
-        </div>
       </div>
 
       <div id="cy"></div>
+    </div>
+
+    <div class="sidepanel right" id="right-panel">
+      <div class="handle" id="right-toggle">❮</div>
+      <h1>Details & Tools</h1>
+      <div id="details-panel">
+        <label>Selection</label>
+        <div id="node-details" class="hint">No node selected.</div>
+      </div>
+
+      <div style="margin-top:10px">
+        <label>Search</label>
+        <input id="searchTerm" type="text" placeholder="label / col / val" style="width:160px" />
+        <div class="btns" style="margin-top:6px">
+          <button id="btnSearchAdd" type="button">Add</button>
+          <button id="btnSearchClear" type="button">Clear</button>
+        </div>
+        <ul id="search-terms" style="list-style:none; padding-left:0; margin-top:6px"></ul>
+      </div>
+
+      <div class="field inline" style="margin-top:8px">
+        <label>Stay on Path</label>
+        <input id="stayOnPath" type="checkbox" />
+      </div>
     </div>
 
     <script>
@@ -167,6 +222,26 @@
           {
             selector: ":selected",
             style: { "border-width": 2, "border-color": "#f59e0b" },
+          },
+          {
+            selector: "node.hub",
+            style: { "border-width": 3, "border-color": "#f59e0b" },
+          },
+          {
+            selector: "node.leaf",
+            style: { opacity: 0.85 },
+          },
+          {
+            selector: "node.search-hit",
+            style: { "border-width": 4, "border-color": "#3b82f6" },
+          },
+          {
+            selector: "node.search-blinkA",
+            style: { opacity: 1 },
+          },
+          {
+            selector: "node.search-blinkB",
+            style: { opacity: 0.35 },
           },
           {
             selector: "node.sp",
@@ -287,19 +362,32 @@
           row.from_val
         );
 
-        // if this exact edge exists, return it
+        // if this exact edge exists, update data and return it
         let e = cy.getElementById(id);
-        if (!e.empty()) return e;
+        if (!e.empty()) {
+          try {
+            if (row.views_count != null) e.data('views_count', Number(row.views_count));
+            if (row.views_list != null) e.data('views_list', String(row.views_list));
+          } catch {}
+          return e;
+        }
 
         // if reverse edge exists, upgrade it to bidirectional
         const rev = cy.getElementById(revId);
         if (!rev.empty()) {
-          rev.data("bidirectional", true);
+          try {
+            rev.data("bidirectional", true);
+            if (row.views_count != null) rev.data('views_count', Number(row.views_count));
+            if (row.views_list != null) rev.data('views_list', String(row.views_list));
+          } catch {}
           return rev;
         }
 
         // otherwise create a normal directed edge
-        return cy.add({ group: "edges", data: { id, source, target } });
+        const data = { id, source, target };
+        if (row.views_count != null) data.views_count = Number(row.views_count);
+        if (row.views_list != null) data.views_list = String(row.views_list);
+        return cy.add({ group: "edges", data });
       }
 
       // ---------- Perf helpers ----------
@@ -318,11 +406,11 @@
         cy.style()
           .selector("edge")
           .style({
-            width: 2,
+            width: 'mapData(views_count, 1, 6, 2, 8)',
             "curve-style": many ? "haystack" : "bezier",
             "target-arrow-shape": many ? "none" : "triangle",
-            "line-color": "#475569",
-            "target-arrow-color": "#475569",
+            "line-color": 'mapData(views_count, 1, 6, #94a3b8, #f59e0b)',
+            "target-arrow-color": 'mapData(views_count, 1, 6, #94a3b8, #f59e0b)',
           })
           .selector("edge[bidirectional]")
           .style({ "source-arrow-shape": many ? "none" : "triangle" })
@@ -345,8 +433,9 @@
           .update();
       }
 
+      let labelHideThreshold = 1500;
       function adjustLabels() {
-        const many = cy.nodes().length > 1500;
+        const many = cy.nodes().length > labelHideThreshold;
         cy.style()
           .selector("node")
           .style({
@@ -374,6 +463,10 @@
       let currentPathEles = null;
       let pathTimers = [];
       let pathBlinkInterval = null;
+      // Search blink state and terms
+      let searchBlinkInterval = null;
+      let searchMatches = null;
+      let searchTerms = [];
 
       function renderEdges(rows, options = {}) {
         cy.batch(() => {
@@ -643,6 +736,201 @@
       // Initialize filters UI
       renderSeedList();
 
+      // -------- Enhancements: filters and tools (client only) --------
+      let minSupport = 1;
+      let hideLeaves = false;
+      let hubDeg = 6;
+      let currentFanoutLimit = null; // number | null
+      let stayOnPath = false;
+
+      function recomputeHubsLeaves() {
+        cy.nodes().removeClass('hub leaf');
+        cy.nodes().forEach(n => {
+          const deg = n.degree();
+          if (deg === 1) n.addClass('leaf');
+          if (deg >= hubDeg) n.addClass('hub');
+          if (hideLeaves && deg === 1) n.style('display', 'none'); else n.style('display', 'element');
+        });
+      }
+
+      function applyFanoutLimitScratch() {
+        cy.edges().forEach(e => e.scratch('_hideFanout', false));
+        if (currentFanoutLimit == null) return;
+        const bySrc = new Map();
+        cy.edges().forEach(e => {
+          const s = e.data('source');
+          if (!bySrc.has(s)) bySrc.set(s, []);
+          bySrc.get(s).push(e);
+        });
+        bySrc.forEach(list => {
+          list.sort((a,b)=> (a.id() < b.id() ? -1 : 1));
+          for (let i=0;i<list.length;i++) {
+            const e = list[i];
+            if (i >= currentFanoutLimit) e.scratch('_hideFanout', true);
+          }
+        });
+      }
+
+      function updateEdgeVisibility() {
+        const pathEdges = (stayOnPath && currentPathEles) ? currentPathEles.filter('edge') : null;
+        cy.edges().forEach(e => {
+          let show = true;
+          if (pathEdges) show = pathEdges.has(e);
+          const vc = e.data('views_count');
+          if (show && vc != null && Number(vc) < minSupport) show = false;
+          if (show && e.scratch('_hideFanout')) show = false;
+          e.style('display', show ? 'element' : 'none');
+        });
+      }
+
+      function reapplyFilters() {
+        applyFanoutLimitScratch();
+        recomputeHubsLeaves();
+        updateEdgeVisibility();
+        setEdgeStyleForSize();
+        adjustLabels();
+      }
+
+      document.getElementById('minSupport').addEventListener('input', (e)=>{
+        minSupport = parseInt(e.target.value, 10) || 1;
+        updateEdgeVisibility();
+      });
+      document.getElementById('hideLeaves').addEventListener('change', (e)=>{
+        hideLeaves = !!e.target.checked;
+        recomputeHubsLeaves();
+      });
+      document.getElementById('hubDeg').addEventListener('change', (e)=>{
+        hubDeg = Math.max(2, parseInt(e.target.value||'6',10));
+        recomputeHubsLeaves();
+      });
+      document.getElementById('labelThresh').addEventListener('change', (e)=>{
+        labelHideThreshold = Math.max(0, parseInt(e.target.value||'1500',10));
+        adjustLabels();
+      });
+      document.getElementById('btnApplyFanout').addEventListener('click', ()=>{
+        const v = parseInt(document.getElementById('fanoutLimit').value||'', 10);
+        currentFanoutLimit = isNaN(v) ? null : Math.max(1, v);
+        reapplyFilters();
+      });
+      document.getElementById('stayOnPath').addEventListener('change', (e)=>{
+        stayOnPath = !!e.target.checked;
+        updateEdgeVisibility();
+      });
+      document.getElementById('btnTidy').addEventListener('click', ()=>{
+        const name = document.getElementById('layout').value;
+        cy.layout({ name, animate: isAnimate(), fit: true, padding: 20 }).run();
+      });
+      document.getElementById('btnExportPng').addEventListener('click', ()=>{
+        try {
+          const uri = cy.png({ full: true, scale: 2, bg: '#0f172a' });
+          const a = document.createElement('a');
+          a.href = uri; a.download = 'graph.png';
+          document.body.appendChild(a); a.click(); a.remove();
+        } catch (e) { console.error('Export PNG failed', e); }
+      });
+      function renderSearchTerms() {
+        const ul = document.getElementById('search-terms');
+        if (!ul) return;
+        ul.innerHTML = '';
+        searchTerms.forEach((t, idx) => {
+          const li = document.createElement('li');
+          li.className = 'hint chip';
+          li.style.margin = '2px 0';
+          const span = document.createElement('span');
+          span.className = 'tag';
+          span.textContent = t;
+          const btn = document.createElement('button');
+          btn.textContent = '×';
+          btn.className = 'chip-close';
+          btn.setAttribute('aria-label','Remove');
+          btn.addEventListener('click', () => {
+            searchTerms.splice(idx, 1);
+            renderSearchTerms();
+            // Recompute blinking for remaining terms
+            applySearchBlinkFromTerms();
+          });
+          li.appendChild(span);
+          li.appendChild(btn);
+          ul.appendChild(li);
+        });
+      }
+
+      function addSearchTermsFromInput() {
+        const raw = (document.getElementById('searchTerm').value||'').toLowerCase();
+        const terms = raw.split(/[\s,]+/).map(s=>s.trim()).filter(Boolean);
+        if (terms.length === 0) return;
+        const set = new Set(searchTerms);
+        for (const t of terms) set.add(t);
+        searchTerms = Array.from(set);
+        document.getElementById('searchTerm').value = '';
+        renderSearchTerms();
+        // Immediately apply blinking to new/combined terms
+        applySearchBlinkFromTerms();
+      }
+
+      function applySearchBlinkFromTerms() {
+        if (!searchTerms || searchTerms.length === 0) { clearSearchBlink(); return; }
+        const terms = searchTerms;
+        const matches = cy.nodes().filter(n=>{
+          const lab = (n.data('label')||'').toString().toLowerCase();
+          const col = (n.data('col')||'').toString().toLowerCase();
+          const val = (n.data('val')||'').toString().toLowerCase();
+          const id = n.id().toLowerCase();
+          return terms.some(t => lab.includes(t) || col.includes(t) || val.includes(t) || id.includes(t));
+        });
+        applySearchBlink(matches);
+        if (matches.length>0) {
+          cy.elements().unselect();
+          matches.select();
+          cy.fit(matches, 60);
+        }
+      }
+
+      document.getElementById('btnSearchAdd').addEventListener('click', ()=>{
+        addSearchTermsFromInput();
+      });
+      document.getElementById('btnSearchClear').addEventListener('click', ()=>{
+        document.getElementById('searchTerm').value='';
+        searchTerms = [];
+        renderSearchTerms();
+        clearSearchBlink();
+        cy.elements().unselect();
+      });
+
+      // Side panel toggles
+      const lp = document.getElementById('left-panel');
+      const rp = document.getElementById('right-panel');
+      document.getElementById('left-toggle').addEventListener('click', ()=>{
+        lp.classList.toggle('open');
+      });
+      document.getElementById('right-toggle').addEventListener('click', ()=>{
+        rp.classList.toggle('open');
+      });
+
+      function applySearchBlink(matches) {
+        clearSearchBlink();
+        searchMatches = matches;
+        if (!searchMatches || searchMatches.length === 0) return;
+        try { searchMatches.addClass('search-hit'); } catch {}
+        let on = true;
+        try { searchMatches.removeClass('search-blinkB').addClass('search-blinkA'); } catch {}
+        searchBlinkInterval = setInterval(()=>{
+          on = !on;
+          try {
+            if (on) { searchMatches.removeClass('search-blinkB').addClass('search-blinkA'); }
+            else { searchMatches.removeClass('search-blinkA').addClass('search-blinkB'); }
+          } catch {}
+        }, 500);
+      }
+
+      function clearSearchBlink() {
+        if (searchBlinkInterval) { try { clearInterval(searchBlinkInterval); } catch {} searchBlinkInterval = null; }
+        if (searchMatches && searchMatches.length) {
+          try { searchMatches.removeClass('search-hit search-blinkA search-blinkB'); } catch {}
+        }
+        searchMatches = null;
+      }
+
       // -------- Node details renderer --------
       function renderNodeDetails(n) {
         const panel = document.getElementById("node-details");
@@ -729,6 +1017,7 @@
         // Clear any per-edge path direction/colour data
         cy.edges().forEach(e => { try { e.removeData('spDir'); e.removeData('spColor'); } catch {} });
         currentPathEles = null;
+        updateEdgeVisibility();
       }
 
       function isAnimate() {
@@ -790,6 +1079,9 @@
           cy.fit(currentPathEles.union(start).union(end), 40);
           // Do not blink when animate is off
         }
+
+        // If stay-on-path is enabled, hide non-path edges
+        updateEdgeVisibility();
 
         // Refresh panel buttons state
         const sel = cy.nodes(":selected").first();
