@@ -64,24 +64,37 @@ if not "%SQLPACKAGE%"=="" (
 )
 
 REM --- Optional drop existing DB ---
-if /I "%REPLACE%"=="/REPLACE" (
-  where sqlcmd >nul 2>&1
+if /I "%REPLACE%"=="/REPLACE" goto :drop_db
+goto :do_import
+
+:drop_db
+where sqlcmd >nul 2>&1
+if not errorlevel 1 (
+  echo Dropping existing database (if exists) via sqlcmd... >> "%LOG%"
+  sqlcmd -S "%SERVER%" -Q "IF DB_ID(N'%DB%') IS NOT NULL BEGIN ALTER DATABASE [%DB%] SET SINGLE_USER WITH ROLLBACK IMMEDIATE; DROP DATABASE [%DB%]; END" >> "%LOG%" 2>&1
+) else (
+  echo [WARN] sqlcmd not found; attempting PowerShell drop... >> "%LOG%"
+  powershell -NoProfile -ExecutionPolicy Bypass -Command ^
+    "$ErrorActionPreference='Stop';" ^
+    "$svr = '%SERVER%'; $db = '%DB%';" ^
+    "$cs = \"Server=$svr;Database=master;Integrated Security=true;TrustServerCertificate=true\";" ^
+    "Add-Type -AssemblyName System.Data;" ^
+    "$cn = New-Object System.Data.SqlClient.SqlConnection $cs; $cn.Open();" ^
+    "$cmd = $cn.CreateCommand();" ^
+    "$cmd.CommandText = \"IF DB_ID(N'$db') IS NOT NULL BEGIN ALTER DATABASE [$db] SET SINGLE_USER WITH ROLLBACK IMMEDIATE; DROP DATABASE [$db]; END\";" ^
+    "$cmd.ExecuteNonQuery() | Out-Null; $cn.Close();" >> "%LOG%" 2>&1
   if errorlevel 1 (
-    echo [WARN] sqlcmd not found; cannot drop existing DB automatically. >> "%LOG%"
+    echo [WARN] PowerShell drop attempt failed; continuing without drop. >> "%LOG%"
   ) else (
-    echo Dropping existing database (if exists)... >> "%LOG%"
-    sqlcmd -S "%SERVER%" -Q "IF DB_ID(N'%DB%') IS NOT NULL BEGIN ALTER DATABASE [%DB%] SET SINGLE_USER WITH ROLLBACK IMMEDIATE; DROP DATABASE [%DB%]; END" >> "%LOG%" 2>&1
+    echo [OK] PowerShell drop completed. >> "%LOG%"
   )
 )
 
+:do_import
 echo Importing "%INFILE%" into database "%DB%" on "%SERVER%" ...
 echo Importing "%INFILE%" into database "%DB%" on "%SERVER%" ... >> "%LOG%"
 
-"%SQLPACKAGE%" ^
-  /Action:Import ^
-  /TargetServerName:"%SERVER%" ^
-  /TargetDatabaseName:"%DB%" ^
-  /SourceFile:"%INFILE%" >> "%LOG%" 2>&1
+"%SQLPACKAGE%" /Action:Import /TargetServerName:"%SERVER%" /TargetDatabaseName:"%DB%" /SourceFile:"%INFILE%" >> "%LOG%" 2>&1
 
 set RC=%ERRORLEVEL%
 echo SqlPackage exit code: %RC% >> "%LOG%"

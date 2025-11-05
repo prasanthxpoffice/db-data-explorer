@@ -74,6 +74,10 @@
                 <option value="grid">grid</option>
               </select>
             </div>
+            <div style="display:flex; align-items:flex-end; gap:6px;">
+              <label style="margin:0 6px 0 12px;">Animate</label>
+              <input id="animate" type="checkbox" checked />
+            </div>
           </div>
 
           <div>
@@ -107,6 +111,11 @@
           <div class="hint">
             Tip: select a node in the graph to auto-expand.
           </div>
+        </div>
+
+        <div id="details-panel" style="margin-top: 14px">
+          <label>Selection</label>
+          <div id="node-details" class="hint">No node selected.</div>
         </div>
       </div>
 
@@ -158,6 +167,73 @@
           {
             selector: ":selected",
             style: { "border-width": 2, "border-color": "#f59e0b" },
+          },
+          {
+            selector: "node.sp",
+            style: { "border-width": 3, "border-color": "#06b6d4" },
+          },
+          {
+            selector: "node.sp-start",
+            style: {
+              "border-width": 4,
+              "border-color": "#22c55e",
+              "background-image": "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='%2322c55e'><path d='M5 3v18'/><path d='M7 4h10l-2 3 2 3H7z'/></svg>",
+              "background-fit": "none",
+              "background-width": 16,
+              "background-height": 16,
+              "background-position-x": 4,
+              "background-position-y": 4,
+              "background-repeat": "no-repeat",
+            },
+          },
+          {
+            selector: "node.sp-end",
+            style: {
+              "border-width": 4,
+              "border-color": "#ef4444",
+              "background-image": "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='%23ef4444'><path d='M12 2l4 4-4 4-4-4 4-4z'/><circle cx='12' cy='18' r='3'/></svg>",
+              "background-fit": "none",
+              "background-width": 16,
+              "background-height": 16,
+              "background-position-x": 4,
+              "background-position-y": 4,
+              "background-repeat": "no-repeat",
+            },
+          },
+          {
+            selector: "edge.sp",
+            style: {
+              width: 4,
+              "line-color": "#f59e0b",
+              "target-arrow-color": "#f59e0b",
+              "source-arrow-color": "#f59e0b",
+              "curve-style": "bezier",
+              "target-arrow-shape": "none",
+              "source-arrow-shape": "none",
+              "arrow-scale": 1.4,
+            },
+          },
+          {
+            selector: "edge.sp.sp-blinkA",
+            style: { opacity: 1 },
+          },
+          {
+            selector: "edge.sp.sp-blinkB",
+            style: { opacity: 0.25 },
+          },
+          {
+            selector: "edge.sp[spDir = 'forward']",
+            style: {
+              "target-arrow-shape": "triangle",
+              "source-arrow-shape": "none",
+            },
+          },
+          {
+            selector: "edge.sp[spDir = 'reverse']",
+            style: {
+              "source-arrow-shape": "triangle",
+              "target-arrow-shape": "none",
+            },
           },
         ],
         layout: { name: document.getElementById("layout").value },
@@ -232,7 +308,7 @@
         clearTimeout(layoutTimer);
         const name = document.getElementById("layout").value;
         layoutTimer = setTimeout(() => {
-          cy.layout({ name, animate: true, fit: true, padding: 20 }).run();
+          cy.layout({ name, animate: isAnimate(), fit: true, padding: 20 }).run();
         }, 50); // debounce a bit
       }
       document.getElementById("layout").addEventListener("change", relayout);
@@ -250,6 +326,22 @@
           })
           .selector("edge[bidirectional]")
           .style({ "source-arrow-shape": many ? "none" : "triangle" })
+          // Re-apply strong override for highlighted shortest-path edges
+          .selector("edge.sp")
+          .style({
+            width: 4,
+            "curve-style": "bezier",
+            "line-color": "#f59e0b",
+            "target-arrow-color": "#f59e0b",
+            "source-arrow-color": "#f59e0b",
+            "target-arrow-shape": "none",
+            "source-arrow-shape": "none",
+            "arrow-scale": 1.4,
+          })
+          .selector("edge.sp.sp-blinkA").style({ opacity: 1 })
+          .selector("edge.sp.sp-blinkB").style({ opacity: 0.25 })
+          .selector("edge.sp[spDir = 'forward']").style({ "target-arrow-shape": "triangle", "source-arrow-shape": "none" })
+          .selector("edge.sp[spDir = 'reverse']").style({ "source-arrow-shape": "triangle", "target-arrow-shape": "none" })
           .update();
       }
 
@@ -276,7 +368,14 @@
       }
       let seeds = [];
 
-      function renderEdges(rows) {
+      // Shortest path state
+      let pathStartId = null;
+      let pathEndId = null;
+      let currentPathEles = null;
+      let pathTimers = [];
+      let pathBlinkInterval = null;
+
+      function renderEdges(rows, options = {}) {
         cy.batch(() => {
           rows.forEach(ensureEdge);
         }); // batch DOM ops
@@ -357,18 +456,34 @@
       document.getElementById("run").addEventListener("click", async () => {
         const payload = buildPayloadFromUI();
         try {
-          const { edges, nextFrontier } = await apiStep(payload);
-          renderEdges(edges || []);
-          setEdgeStyleForSize();
-          adjustLabels();
+          let steps = Math.max(1, parseInt(String(payload.depth || 1), 10));
+          let next = seeds.slice();
+          if (!next.length && cy.nodes().length) {
+            // If no seeds specified but graph has nodes, use currently selected or all nodes as frontier
+            const sel = cy.nodes(":selected");
+            const pool = sel.length ? sel : cy.nodes();
+            next = pool.map((n) => ({ col: n.data("col"), val: String(n.data("val")) }));
+          }
 
-          currentFrontier = (nextFrontier || []).slice();
+          for (let d = 0; d < steps; d++) {
+            if (!next || next.length === 0) break;
+            payload.frontier = next.slice();
+            payload.depth = 1; // advance exactly one step per call
+            payload.perViewExclude = perViewExclude;
+            const { edges, nextFrontier } = await apiStep(payload);
+            renderEdges(edges || []);
+            setEdgeStyleForSize();
+            adjustLabels();
 
-          // Maintain per-view exclude client-side for next requests
-          if (Array.isArray(payload.viewIds)) {
-            for (const v of payload.viewIds) {
-              for (const f of currentFrontier) addExclude(v, f.col, f.val);
+            currentFrontier = (nextFrontier || []).slice();
+
+            if (Array.isArray(payload.viewIds)) {
+              for (const v of payload.viewIds) {
+                for (const f of currentFrontier) addExclude(v, f.col, f.val);
+              }
             }
+
+            next = currentFrontier;
           }
         } catch (err) {
           console.error(err);
@@ -381,18 +496,26 @@
         if (!n || isExpanding) return;
         isExpanding = true;
         const payload = buildPayloadFromUI();
-        payload.frontier = [{ col: n.col, val: String(n.val) }];
         try {
-          const { edges, nextFrontier } = await apiStep(payload);
-          renderEdges(edges || []);
-          setEdgeStyleForSize();
-          adjustLabels();
+          let steps = Math.max(1, parseInt(String(payload.depth || 1), 10));
+          let next = [{ col: n.col, val: String(n.val) }];
+          for (let d = 0; d < steps; d++) {
+            if (!next || next.length === 0) break;
+            payload.frontier = next.slice();
+            payload.depth = 1; // advance exactly one step per call
+            payload.perViewExclude = perViewExclude;
+            const { edges, nextFrontier } = await apiStep(payload);
+            renderEdges(edges || []);
+            setEdgeStyleForSize();
+            adjustLabels();
 
-          currentFrontier = (nextFrontier || []).slice();
-          if (Array.isArray(payload.viewIds)) {
-            for (const v of payload.viewIds) {
-              for (const f of currentFrontier) addExclude(v, f.col, f.val);
+            currentFrontier = (nextFrontier || []).slice();
+            if (Array.isArray(payload.viewIds)) {
+              for (const v of payload.viewIds) {
+                for (const f of currentFrontier) addExclude(v, f.col, f.val);
+              }
             }
+            next = currentFrontier;
           }
         } catch (err) {
           console.error(err);
@@ -404,7 +527,15 @@
 
       cy.on("select", "node", async (evt) => {
         const n = evt.target.data();
+        renderNodeDetails(n);
         await expandFromNode(n);
+      });
+
+      cy.on("unselect", "node", () => {
+        // If nothing remains selected, clear the panel
+        if (cy.nodes(":selected").length === 0) {
+          document.getElementById("node-details").innerHTML = "No node selected.";
+        }
       });
 
       document.getElementById("clear").addEventListener("click", () => {
@@ -511,6 +642,175 @@
 
       // Initialize filters UI
       renderSeedList();
+
+      // -------- Node details renderer --------
+      function renderNodeDetails(n) {
+        const panel = document.getElementById("node-details");
+        if (!n) {
+          panel.textContent = "No node selected.";
+          return;
+        }
+        const id = nodeId(n.col, n.val);
+        const node = cy.getElementById(id);
+        const deg = !node.empty() ? node.degree() : 0;
+        const indeg = !node.empty() ? node.indegree() : 0;
+        const outdeg = !node.empty() ? node.outdegree() : 0;
+
+        const color = n.color || "#64748b";
+        const type = n.type || "";
+        const label = (n.label ?? "").toString();
+
+        const html = `
+          <div style="display:flex; align-items:center; gap:10px;">
+            <div style="width:14px;height:14px;border-radius:3px;background:${color};border:1px solid #0f172a;"></div>
+            <div style="font-weight:600;">${label || String(n.val)}</div>
+          </div>
+          <div style="margin-top:8px;">
+            <div><span class="tag">Column</span> ${n.col}</div>
+            <div><span class="tag">Value</span> ${String(n.val)}</div>
+            ${type ? `<div><span class=\"tag\">Type</span> ${type}</div>` : ""}
+            <div style="margin-top:6px;">
+              <span class="tag">Degree</span> ${deg} (in ${indeg} | out ${outdeg})
+            </div>
+          </div>
+          <div class="btns" style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap;">
+            <button id="copy-node-json" type="button">Copy JSON</button>
+            <button id="set-start" type="button">Set Start</button>
+            <button id="set-end" type="button">Set End</button>
+            <button id="show-path" type="button" ${pathStartId && pathEndId ? '' : 'disabled'}>Show Shortest Path</button>
+            <button id="clear-path" type="button" ${currentPathEles ? '' : 'disabled'}>Clear Path</button>
+          </div>
+          <div class="hint" style="margin-top:6px;">
+            <span class="tag">Path Start</span> ${pathStartId ?? '—'}
+            <span class="tag" style="margin-left:6px;">Path End</span> ${pathEndId ?? '—'}
+          </div>
+        `;
+        panel.innerHTML = html;
+
+        const btn = document.getElementById("copy-node-json");
+        if (btn) {
+          btn.addEventListener("click", async () => {
+            const payload = {
+              col: n.col,
+              val: String(n.val),
+              type: type || undefined,
+              label: label,
+              color: color,
+              degree: { total: deg, in: indeg, out: outdeg },
+            };
+            try {
+              await navigator.clipboard.writeText(JSON.stringify(payload, null, 2));
+              btn.textContent = "Copied";
+              setTimeout(() => (btn.textContent = "Copy JSON"), 1200);
+            } catch {}
+          });
+        }
+
+        const btnStart = document.getElementById("set-start");
+        if (btnStart) btnStart.addEventListener("click", () => { pathStartId = id; renderNodeDetails(n); });
+        const btnEnd = document.getElementById("set-end");
+        if (btnEnd) btnEnd.addEventListener("click", () => { pathEndId = id; renderNodeDetails(n); });
+        const btnShow = document.getElementById("show-path");
+        if (btnShow) btnShow.addEventListener("click", () => { showShortestPath(); });
+        const btnClear = document.getElementById("clear-path");
+        if (btnClear) btnClear.addEventListener("click", () => { clearShortestPath(); renderNodeDetails(n); });
+      }
+
+      function clearShortestPath() {
+        try { cy.stop(); } catch {}
+        for (const t of pathTimers) clearTimeout(t);
+        pathTimers = [];
+        if (pathBlinkInterval) { try { clearInterval(pathBlinkInterval); } catch {} pathBlinkInterval = null; }
+        // Remove highlight from any previously marked elements, even if collection reference lost
+        cy.elements('.sp').removeClass('sp');
+        cy.edges().removeClass('sp-blinkA sp-blinkB');
+        if (pathStartId) cy.getElementById(pathStartId).removeClass('sp-start');
+        if (pathEndId) cy.getElementById(pathEndId).removeClass('sp-end');
+        // Clear any per-edge path direction/colour data
+        cy.edges().forEach(e => { try { e.removeData('spDir'); e.removeData('spColor'); } catch {} });
+        currentPathEles = null;
+      }
+
+      function isAnimate() {
+        const el = document.getElementById("animate");
+        return !el ? true : !!el.checked;
+      }
+
+      function showShortestPath() {
+        if (!pathStartId || !pathEndId) return;
+        const start = cy.getElementById(pathStartId);
+        const end = cy.getElementById(pathEndId);
+        if (start.empty() || end.empty()) {
+          alert("Start or End node is not in the current graph.");
+          return;
+        }
+        // Clear previous highlight
+        clearShortestPath();
+        // Use A* on current graph; treat as undirected for flexibility
+        const result = cy.elements().aStar({ root: start, goal: end, directed: false });
+        if (!result.found) {
+          alert("No path found in current graph. Try expanding more.");
+          return;
+        }
+        currentPathEles = result.path;
+        // Mark start/end
+        try { start.addClass('sp-start'); } catch {}
+        try { end.addClass('sp-end'); } catch {}
+
+        // Set direction attribute for each edge along the path based on start->end order
+        const seq = currentPathEles.toArray();
+        for (let i = 1; i < seq.length - 1; i++) {
+          const ele = seq[i];
+          if (!ele.isEdge()) continue;
+          const prev = seq[i - 1];
+          const next = seq[i + 1];
+          if (!prev || !next || !prev.isNode() || !next.isNode()) continue;
+          const src = ele.data('source');
+          const tgt = ele.data('target');
+          const forward = (src === prev.id() && tgt === next.id());
+          try { ele.data('spDir', forward ? 'forward' : 'reverse'); } catch {}
+        }
+
+        if (isAnimate()) {
+          const ordered = currentPathEles.toArray();
+          // Bring edges forward in z-order a bit
+          try { cy.edges().removeClass('sp'); } catch {}
+          ordered.forEach((ele, idx) => {
+            const t = setTimeout(() => { try { ele.addClass('sp'); } catch {} }, idx * 60);
+            pathTimers.push(t);
+          });
+          const total = ordered.length * 60 + 100;
+          pathTimers.push(setTimeout(() => {
+            try { cy.animate({ fit: { eles: currentPathEles.union(start).union(end), padding: 40 }, duration: 400 }); } catch {}
+            // start blinking after reveal
+            startPathBlink();
+          }, total));
+        } else {
+          currentPathEles.addClass("sp");
+          cy.fit(currentPathEles.union(start).union(end), 40);
+          // Do not blink when animate is off
+        }
+
+        // Refresh panel buttons state
+        const sel = cy.nodes(":selected").first();
+        if (sel && typeof sel.empty === 'function' && !sel.empty()) renderNodeDetails(sel.data());
+      }
+
+      function startPathBlink() {
+        if (pathBlinkInterval) { try { clearInterval(pathBlinkInterval); } catch {} }
+        const edges = currentPathEles ? currentPathEles.filter('edge') : cy.collection();
+        if (!edges || edges.length === 0) return;
+        // Initialize to A state
+        try { edges.removeClass('sp-blinkB').addClass('sp-blinkA'); } catch {}
+        let on = true;
+        pathBlinkInterval = setInterval(() => {
+          on = !on;
+          try {
+            if (on) { edges.removeClass('sp-blinkB').addClass('sp-blinkA'); }
+            else { edges.removeClass('sp-blinkA').addClass('sp-blinkB'); }
+          } catch {}
+        }, 500);
+      }
     </script>
   </body>
 </html>

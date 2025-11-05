@@ -77,6 +77,14 @@ db/import-bacpac.ps1 -Replace
 db-import-bacpac.bat           # uses defaults
 db-import-bacpac.bat \
   "(localdb)\\MSSQLLocalDB" IAS db\\IAS.bacpac /REPLACE
+
+Schema-only updates (keep data):
+
+```
+db-publish-dacpac.bat                   # expects db/IAS.dacpac
+# or specify a dacpac
+db-publish-dacpac.bat "(localdb)\\MSSQLLocalDB" IAS db\\Your.dacpac
+```
 ```
 
 Both import helpers attempt to start LocalDB when available. The batch script writes a log to `db/import-log.txt`.

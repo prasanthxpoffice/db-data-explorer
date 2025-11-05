@@ -1,0 +1,30 @@
+================== Wed 11/05/2025  7:34:35.29 ================== 
+Using settings: 
+  Server: (localdb)\MSSQLLocalDB 
+  DB    : IAS 
+  Dacpac: db\IAS.dacpac 
+ 
+[OK] Using SqlPackage: "C:\Users\prasanth.s\.dotnet\tools\sqlpackage.exe" 
+[INFO] Dacpac not found; extracting from "(localdb)\MSSQLLocalDB"/"IAS" ... 
+Connecting to database 'IAS' on server '(localdb)\MSSQLLocalDB'.
+Extracting schema
+Extracting schema from database
+Resolving references in schema model
+Validating schema model for data package
+Validating schema
+Successfully extracted database and saved it to file 'C:\Users\prasanth.s\Applications\AI\db-data-explorer\db\IAS.dacpac'.
+Time elapsed 0:00:08.50
+[OK] Extracted dacpac: "db\IAS.dacpac" 
+Publishing schema to "IAS" on "(localdb)\MSSQLLocalDB" ... 
+Publishing to database 'IAS' on server '(localdb)\MSSQLLocalDB'.
+Initializing deployment (Start)
+Initializing deployment (Complete)
+Analyzing deployment plan (Start)
+Analyzing deployment plan (Complete)
+Updating database (Start)
+Update complete.
+Updating database (Complete)
+Successfully published database.
+Time elapsed 0:00:11.02
+SqlPackage exit code: 0 
+[OK] Publish complete. 
