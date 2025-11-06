@@ -1,0 +1,1269 @@
+      // Base URL for API calls. If opened via file://, default to localhost:3000.
+      const apiBase =
+        location.protocol === "file:" ? "http://localhost:3000" : "";
+      const cy = cytoscape({
+        container: document.getElementById("cy"),
+        style: [
+          {
+            selector: "node",
+            style: {
+              label: "data(label)",
+              "text-wrap": "wrap",
+              "text-max-width": 120,
+              "font-size": 12,
+              "background-color": (ele) => ele.data("color") || "#64748b",
+              "border-width": 1,
+              "border-color": "#0f172a",
+              width: "label",
+              height: "label",
+              padding: "10px",
+              shape: "round-rectangle",
+              "text-valign": "center",
+              "text-halign": "center",
+              color: "#e5e7eb",
+            },
+          },
+          {
+            selector: "edge",
+            style: {
+              width: 2,
+              "line-color": "#475569",
+              "target-arrow-color": "#475569",
+              "target-arrow-shape": "triangle",
+              "curve-style": "bezier",
+            },
+          },
+          // If an edge is marked bidirectional, show arrowheads on both ends
+          {
+            selector: "edge[bidirectional]",
+            style: { "source-arrow-shape": "triangle" },
+          },
+          {
+            selector: ":selected",
+            style: { "border-width": 2, "border-color": "#f59e0b" },
+          },
+          {
+            selector: "node.hub",
+            style: { "border-width": 3, "border-color": "#f59e0b" },
+          },
+          {
+            selector: "node.leaf",
+            style: { opacity: 0.85 },
+          },
+          {
+            selector: "node.search-hit",
+            style: { "border-width": 4, "border-color": "#3b82f6" },
+          },
+          {
+            selector: "node.search-blinkA",
+            style: { opacity: 1 },
+          },
+          {
+            selector: "node.search-blinkB",
+            style: { opacity: 0.35 },
+          },
+          {
+            selector: "node.sp",
+            style: { "border-width": 3, "border-color": "#06b6d4" },
+          },
+          {
+            selector: "node.sp-start",
+            style: {
+              "border-width": 4,
+              "border-color": "#22c55e",
+              "background-image": "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='%2322c55e'><path d='M5 3v18'/><path d='M7 4h10l-2 3 2 3H7z'/></svg>",
+              "background-fit": "none",
+              "background-width": 16,
+              "background-height": 16,
+              "background-position-x": 4,
+              "background-position-y": 4,
+              "background-repeat": "no-repeat",
+            },
+          },
+          {
+            selector: "node.sp-end",
+            style: {
+              "border-width": 4,
+              "border-color": "#ef4444",
+              "background-image": "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='%23ef4444'><path d='M12 2l4 4-4 4-4-4 4-4z'/><circle cx='12' cy='18' r='3'/></svg>",
+              "background-fit": "none",
+              "background-width": 16,
+              "background-height": 16,
+              "background-position-x": 4,
+              "background-position-y": 4,
+              "background-repeat": "no-repeat",
+            },
+          },
+          {
+            selector: "edge.sp",
+            style: {
+              width: 4,
+              "line-color": "#f59e0b",
+              "target-arrow-color": "#f59e0b",
+              "source-arrow-color": "#f59e0b",
+              "curve-style": "bezier",
+              "target-arrow-shape": "none",
+              "source-arrow-shape": "none",
+              "arrow-scale": 1.4,
+            },
+          },
+          {
+            selector: "edge.sp.sp-blinkA",
+            style: { opacity: 1 },
+          },
+          {
+            selector: "edge.sp.sp-blinkB",
+            style: { opacity: 0.25 },
+          },
+          {
+            selector: "edge.sp[spDir = 'forward']",
+            style: {
+              "target-arrow-shape": "triangle",
+              "source-arrow-shape": "none",
+            },
+          },
+          {
+            selector: "edge.sp[spDir = 'reverse']",
+            style: {
+              "source-arrow-shape": "triangle",
+              "target-arrow-shape": "none",
+            },
+          },
+        ],
+        layout: { name: document.getElementById("layout").value },
+        wheelSensitivity: 0.15,
+      });
+
+      // ---------- Helpers ----------
+      function nodeId(col, val) {
+        return `${col}:${val}`;
+      }
+      function edgeId(from_col, from_val, to_col, to_val) {
+        return `${from_col}:${from_val}->${to_col}:${to_val}`;
+      }
+
+      function ensureNode({ col, val, text, color, type }) {
+        const id = nodeId(col, val);
+        const existing = cy.getElementById(id);
+        if (!existing.empty()) {
+          try {
+            const d = existing.data();
+            if (type != null && (d.type == null || d.type === "")) existing.data("type", type);
+            if (color && (d.color == null || d.color === "")) existing.data("color", color);
+            if (text && (d.label == null || d.label === String(d.val))) existing.data("label", text);
+          } catch {}
+          return existing;
+        }
+        const label = text || String(val);
+        const ele = cy.add({ group: "nodes", data: { id, col, val, label, color, type } });
+        try { ensureLegendForType(type, color); } catch {}
+        return ele;
+      }
+
+      // Collapse reverse edges into one "bidirectional" edge in the UI
+      function ensureEdge(row) {
+        const source = nodeId(row.from_col, row.from_val);
+        const target = nodeId(row.to_col, row.to_val);
+
+        // Ensure endpoint nodes exist (with supplied labels/colors)
+        ensureNode({
+          col: row.from_col,
+          val: row.from_val,
+          text: row.from_text,
+          color: row.from_color,
+          type: row.from_type,
+        });
+        ensureNode({
+          col: row.to_col,
+          val: row.to_val,
+          text: row.to_text,
+          color: row.to_color,
+          type: row.to_type,
+        });
+
+        const id = edgeId(row.from_col, row.from_val, row.to_col, row.to_val);
+        const revId = edgeId(
+          row.to_col,
+          row.to_val,
+          row.from_col,
+          row.from_val
+        );
+
+        // if this exact edge exists, update data and return it
+        let e = cy.getElementById(id);
+        if (!e.empty()) {
+          try {
+            if (row.views_count != null) e.data('views_count', Number(row.views_count));
+            if (row.views_list != null) e.data('views_list', String(row.views_list));
+          } catch {}
+          return e;
+        }
+
+        // if reverse edge exists, upgrade it to bidirectional
+        const rev = cy.getElementById(revId);
+        if (!rev.empty()) {
+          try {
+            rev.data("bidirectional", true);
+            if (row.views_count != null) rev.data('views_count', Number(row.views_count));
+            if (row.views_list != null) rev.data('views_list', String(row.views_list));
+          } catch {}
+          return rev;
+        }
+
+        // otherwise create a normal directed edge
+        const data = { id, source, target };
+        if (row.views_count != null) data.views_count = Number(row.views_count);
+        if (row.views_list != null) data.views_list = String(row.views_list);
+        return cy.add({ group: "edges", data });
+      }
+
+      // ---------- Perf helpers ----------
+      let layoutTimer = null;
+      function relayout() {
+        clearTimeout(layoutTimer);
+        const name = document.getElementById("layout").value;
+        layoutTimer = setTimeout(() => {
+          cy.layout({ name, animate: isAnimate(), fit: true, padding: 20 }).run();
+        }, 50); // debounce a bit
+      }
+      document.getElementById("layout").addEventListener("change", relayout);
+
+      function setEdgeStyleForSize() {
+        const many = cy.edges().length > 1000;
+        cy.style()
+          .selector("edge")
+          .style({
+            width: 'mapData(views_count, 1, 6, 2, 8)',
+            "curve-style": many ? "haystack" : "bezier",
+            "target-arrow-shape": many ? "none" : "triangle",
+            "line-color": 'mapData(views_count, 1, 6, #94a3b8, #f59e0b)',
+            "target-arrow-color": 'mapData(views_count, 1, 6, #94a3b8, #f59e0b)',
+          })
+          .selector("edge[bidirectional]")
+          .style({ "source-arrow-shape": many ? "none" : "triangle" })
+          // Re-apply strong override for highlighted shortest-path edges
+          .selector("edge.sp")
+          .style({
+            width: 4,
+            "curve-style": "bezier",
+            "line-color": "#f59e0b",
+            "target-arrow-color": "#f59e0b",
+            "source-arrow-color": "#f59e0b",
+            "target-arrow-shape": "none",
+            "source-arrow-shape": "none",
+            "arrow-scale": 1.4,
+          })
+          .selector("edge.sp.sp-blinkA").style({ opacity: 1 })
+          .selector("edge.sp.sp-blinkB").style({ opacity: 0.25 })
+          .selector("edge.sp[spDir = 'forward']").style({ "target-arrow-shape": "triangle", "source-arrow-shape": "none" })
+          .selector("edge.sp[spDir = 'reverse']").style({ "source-arrow-shape": "triangle", "target-arrow-shape": "none" })
+          .update();
+      }
+
+      let labelHideThreshold = 1500;
+      function adjustLabels() {
+        const many = cy.nodes().length > labelHideThreshold;
+        cy.style()
+          .selector("node")
+          .style({
+            label: many ? "" : "data(label)",
+            "min-zoomed-font-size": many ? 8 : 0,
+          })
+          .update();
+      }
+
+      // ---------- State maintained in the page ----------
+      let currentFrontier = [];
+      let perViewExclude = [];
+      let perViewExcludeSet = new Set();
+      function addExclude(viewId, col, val) {
+        const key = `${viewId}|${col}|${String(val)}`;
+        if (perViewExcludeSet.has(key)) return;
+        perViewExcludeSet.add(key);
+        perViewExclude.push({ ViewID: viewId, col, val: String(val) });
+      }
+      let seeds = [];
+
+      // Shortest path state
+      let pathStartId = null;
+      let pathEndId = null;
+      let currentPathEles = null;
+      let pathTimers = [];
+      let pathBlinkInterval = null;
+      // Search blink state and terms
+      let searchBlinkInterval = null;
+      let searchMatches = null;
+      let searchTerms = [];
+
+      function renderEdges(rows, options = {}) {
+        cy.batch(() => {
+          rows.forEach(ensureEdge);
+        }); // batch DOM ops
+        relayout();
+      }
+
+      function renderSeedList() {
+        const ul = document.getElementById("seed-list");
+        ul.innerHTML = "";
+        seeds.forEach((s, idx) => {
+          const li = document.createElement("li");
+          li.className = "hint";
+          li.style.margin = "2px 0";
+          const disp = (s.label ?? s.val);
+          const colName = s.colLabel || s.col;
+          li.textContent = `${colName} = ${disp}`;
+          const btn = document.createElement("button");
+          btn.textContent = "x";
+          btn.style.marginLeft = "8px";
+          btn.addEventListener("click", () => {
+            seeds.splice(idx, 1);
+            renderSeedList();
+          });
+          li.appendChild(btn);
+          ul.appendChild(li);
+        });
+      }
+
+      document.getElementById("add-seed").addEventListener("click", () => {
+        const sel = document.getElementById("seed-col-select");
+        const col = sel && sel.value ? sel.value.trim() : "";
+        const colLabel = sel && sel.selectedIndex >= 0 ? (sel.options[sel.selectedIndex].textContent || col) : col;
+        const valInput = document.getElementById("seed-val");
+        const typed = (valInput.value || "").trim();
+        if (!col || !typed) { alert("Pick a column and enter a value."); return; }
+        // Map the typed label back to the ID using datalist options
+        let idVal = typed;
+        let label = typed;
+        const list = document.getElementById("seedVals-list");
+        if (list) {
+          const match = Array.from(list.children).find(o => o.value === typed);
+          if (match && match.getAttribute) {
+            const d = match.getAttribute('data-id');
+            if (d) idVal = d;
+            // label remains the visible text (typed)
+          }
+        }
+        // De-dupe by (col, val)
+        const key = `${col}|${idVal}`;
+        const exists = seeds.some(s => `${s.col}|${String(s.val)}` === key);
+        if (!exists) seeds.push({ col, colLabel, val: idVal, label });
+        valInput.value = "";
+        renderSeedList();
+      });
+
+      document.getElementById("add-seed-selected").addEventListener("click", () => {
+        const sel = cy.nodes(":selected");
+        if (!sel.length) { alert("Select node(s) in the graph to add."); return; }
+        sel.forEach(n => {
+          const col = n.data("col");
+          const val = String(n.data("val"));
+          const colSel = document.getElementById("seed-col-select");
+          const colLabel = (colSel && colSel.selectedIndex >= 0) ? (colSel.options[colSel.selectedIndex].textContent || col) : col;
+          const label = (n.data("label") ?? val).toString();
+          if (col && val) {
+            const key = `${col}|${val}`;
+            const exists = seeds.some(s => `${s.col}|${String(s.val)}` === key);
+            if (!exists) seeds.push({ col, colLabel, val, label });
+          }
+        });
+        renderSeedList();
+      });
+
+      document.getElementById("clear-seeds").addEventListener("click", () => {
+        seeds = [];
+        renderSeedList();
+      });
+
+      // ---- Seed dropdowns powered by the API ----
+      async function refreshSeedColumns() {
+        try {
+          const viewIds = getSelectedViewIds();
+          const lang = document.getElementById("lang").value || "en";
+          const cols = await (window.App && App.Api && App.Api.getSeedColumns
+            ? App.Api.getSeedColumns(viewIds, lang)
+            : (async ()=>{
+                const qs = new URLSearchParams();
+                if (viewIds && viewIds.length) qs.set("viewIds", viewIds.join(","));
+                qs.set("lang", lang);
+                const res = await fetch(`${apiBase}/api/seed/columns?${qs.toString()}`);
+                if (!res.ok) throw new Error(`seed columns ${res.status}`);
+                return res.json();
+              })()
+          );
+          const sel = document.getElementById("seed-col-select");
+          sel.innerHTML = "";
+          if (Array.isArray(cols) && cols.length) {
+            const def = document.createElement('option');
+            def.value = '';
+            def.textContent = '--';
+            def.selected = true;
+            sel.appendChild(def);
+          }
+          (cols || []).forEach(item => {
+            const opt = document.createElement("option");
+            if (item && typeof item === 'object' && 'id' in item) {
+              opt.value = String(item.id);
+              opt.textContent = String(item.text ?? item.id);
+            } else {
+              const c = String(item ?? '');
+              opt.value = c; opt.textContent = c;
+            }
+            sel.appendChild(opt);
+          });
+          if (!sel.options.length) {
+            const opt = document.createElement('option');
+            opt.value = '';
+            opt.textContent = '— No active columns —';
+            opt.disabled = true; opt.selected = true;
+            sel.appendChild(opt);
+          }
+          } catch (e) {
+            // Fallback to columns in current graph
+            const sel = document.getElementById("seed-col-select");
+            const seen = new Set();
+            sel.innerHTML = "";
+            cy.nodes().forEach(n=>{ const c=n.data("col"); if (c && !seen.has(c)) { seen.add(c); const opt=document.createElement("option"); opt.value=opt.textContent=c; sel.appendChild(opt);} });
+            if (sel.options.length) {
+              const def = document.createElement('option');
+              def.value = '';
+              def.textContent = '--';
+              def.selected = true;
+              sel.insertBefore(def, sel.firstChild);
+            }
+          }
+        // Trigger a value suggestions refresh
+        refreshSeedValuesSuggestions();
+      }
+
+      let seedValTimer = null;
+      async function refreshSeedValuesSuggestions() {
+        clearTimeout(seedValTimer);
+        seedValTimer = setTimeout(async () => {
+          try {
+            const sel = document.getElementById("seed-col-select");
+            const col = sel && sel.value ? sel.value : "";
+            const term = (document.getElementById("seed-val").value || "").trim();
+            if (!col) return;
+            const viewIds = getSelectedViewIds();
+            const lang = document.getElementById("lang").value || "en";
+            const payload = await (window.App && App.Api && App.Api.getSeedValues
+              ? App.Api.getSeedValues(col, term, viewIds, lang, 30)
+              : (async ()=>{
+                  const qs = new URLSearchParams();
+                  qs.set("col", col);
+                  if (term) qs.set("term", term);
+                  if (viewIds && viewIds.length) qs.set("viewIds", viewIds.join(","));
+                  qs.set("lang", lang);
+                  qs.set("pageSize", "30");
+                  const res = await fetch(`${apiBase}/api/seed/values?${qs.toString()}`);
+                  if (!res.ok) throw new Error(`seed values ${res.status}`);
+                  return res.json();
+                })()
+            );
+            const list = document.getElementById("seedVals-list");
+            list.innerHTML = "";
+            (payload.items || []).forEach(it => {
+              const o = document.createElement("option");
+              if (it && typeof it === 'object' && 'id' in it) {
+                o.value = String(it.text ?? it.id); // show label to user
+                o.setAttribute('data-id', String(it.id)); // keep underlying ID
+              } else {
+                const v = String(it ?? '');
+                o.value = v;
+              }
+              list.appendChild(o);
+            });
+          } catch (e) {
+            // swallow for now
+          }
+        }, 200);
+      }
+
+      document.getElementById("seed-val").addEventListener("input", refreshSeedValuesSuggestions);
+
+      function buildPayloadFromUI() {
+        const viewIds = getSelectedViewIds();
+        const depth = Math.max(
+          1,
+          parseInt(document.getElementById("depth").value || "1", 10)
+        );
+        const lang = document.getElementById("lang").value;
+        const maxFanoutText = document.getElementById("maxFanout").value;
+        const maxFanout = maxFanoutText
+          ? parseInt(maxFanoutText, 10)
+          : undefined;
+        return {
+          viewIds,
+          frontier: seeds.slice(),
+          perViewExclude,
+          depth,
+          lang,
+          maxFanout,
+        };
+      }
+
+      // ---------- API call ----------
+      async function apiStep(body) {
+        if (window.App && App.Api && App.Api.traverseStepMulti) {
+          return App.Api.traverseStepMulti(body);
+        }
+        const res = await fetch(`${apiBase}/api/traverseStepMulti`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        if (!res.ok) throw new Error(`API ${res.status} ${await res.text()}`);
+        return res.json(); // { edges, nextFrontier }
+      }
+
+      // ---------- Button handlers ----------
+      document.getElementById("run").addEventListener("click", async () => {
+        const payload = buildPayloadFromUI();
+        try {
+          // Use a fresh, local exclude set for this run so previous runs don't block new seeds
+          let localExclude = [];
+          const localExcludeSet = new Set();
+          const addExcludeLocal = (viewId, col, val) => {
+            const key = `${viewId}|${col}|${String(val)}`;
+            if (localExcludeSet.has(key)) return;
+            localExcludeSet.add(key);
+            localExclude.push({ ViewID: viewId, col, val: String(val) });
+          };
+
+          let steps = Math.max(1, parseInt(String(payload.depth || 1), 10));
+          let next = seeds.slice();
+          if (!next.length && cy.nodes().length) {
+            // If no seeds specified but graph has nodes, use currently selected or all nodes as frontier
+            const sel = cy.nodes(":selected");
+            const pool = sel.length ? sel : cy.nodes();
+            next = pool.map((n) => ({ col: n.data("col"), val: String(n.data("val")) }));
+          }
+
+          for (let d = 0; d < steps; d++) {
+            if (!next || next.length === 0) break;
+            payload.frontier = next.slice();
+            payload.depth = 1; // advance exactly one step per call
+            payload.perViewExclude = localExclude;
+            const { edges, nextFrontier } = await apiStep(payload);
+            renderEdges(edges || []);
+            setEdgeStyleForSize();
+            adjustLabels();
+
+            currentFrontier = (nextFrontier || []).slice();
+
+            if (Array.isArray(payload.viewIds)) {
+              for (const v of payload.viewIds) {
+                for (const f of currentFrontier) addExcludeLocal(v, f.col, f.val);
+              }
+            }
+
+            next = currentFrontier;
+          }
+        } catch (err) {
+          console.error(err);
+          alert(err.message);
+        }
+      });
+
+      let isExpanding = false;
+      async function expandFromNode(n) {
+        if (!n || isExpanding) return;
+        isExpanding = true;
+        const payload = buildPayloadFromUI();
+        try {
+          // Use a fresh, local exclude set for this expansion run
+          let localExclude = [];
+          const localExcludeSet = new Set();
+          const addExcludeLocal = (viewId, col, val) => {
+            const key = `${viewId}|${col}|${String(val)}`;
+            if (localExcludeSet.has(key)) return;
+            localExcludeSet.add(key);
+            localExclude.push({ ViewID: viewId, col, val: String(val) });
+          };
+
+          let steps = Math.max(1, parseInt(String(payload.depth || 1), 10));
+          let next = [{ col: n.col, val: String(n.val) }];
+          for (let d = 0; d < steps; d++) {
+            if (!next || next.length === 0) break;
+            payload.frontier = next.slice();
+            payload.depth = 1; // advance exactly one step per call
+            payload.perViewExclude = localExclude;
+            const { edges, nextFrontier } = await apiStep(payload);
+            // Only refresh if there are truly new edges/nodes.
+            if (edges && edges.length) {
+              let hasNew = false;
+              try {
+                for (const row of edges) {
+                  const id = edgeId(row.from_col, row.from_val, row.to_col, row.to_val);
+                  const revId = edgeId(row.to_col, row.to_val, row.from_col, row.from_val);
+                  const fwdEmpty = cy.getElementById(id).empty();
+                  const revEmpty = cy.getElementById(revId).empty();
+                  if (fwdEmpty && revEmpty) { hasNew = true; break; }
+                }
+                // Upgrade reverse edges to bidirectional without relayout
+                if (!hasNew) {
+                  for (const row of edges) {
+                    const revId = edgeId(row.to_col, row.to_val, row.from_col, row.from_val);
+                    const rev = cy.getElementById(revId);
+                    if (!rev.empty()) { try { rev.data('bidirectional', true); } catch {} }
+                  }
+                  try { cy.style().update(); } catch {}
+                }
+              } catch {}
+
+              if (hasNew) {
+                renderEdges(edges);
+                setEdgeStyleForSize();
+                adjustLabels();
+              }
+            }
+
+            currentFrontier = (nextFrontier || []).slice();
+            if (Array.isArray(payload.viewIds)) {
+              for (const v of payload.viewIds) {
+                for (const f of currentFrontier) addExcludeLocal(v, f.col, f.val);
+              }
+            }
+            next = currentFrontier;
+          }
+        } catch (err) {
+          console.error(err);
+          alert(err.message);
+        } finally {
+          isExpanding = false;
+        }
+      }
+
+      cy.on("select", "node", async (evt) => {
+        const n = evt.target.data();
+        renderNodeDetails(n);
+        await expandFromNode(n);
+      });
+
+      cy.on("unselect", "node", () => {
+        // If nothing remains selected, clear the panel
+        if (cy.nodes(":selected").length === 0) {
+          document.getElementById("node-details").innerHTML = "No node selected.";
+        }
+      });
+
+      document.getElementById("clear").addEventListener("click", () => {
+        cy.elements().remove();
+        currentFrontier = [];
+        perViewExclude = [];
+        perViewExcludeSet = new Set();
+        seeds = [];
+        renderSeedList();
+        setEdgeStyleForSize();
+        adjustLabels();
+      });
+
+      // ----- View IDs multiselect -----
+      let availableViews = [];
+      const viewSelected = new Set();
+      const viewContainer = document.getElementById("view-select");
+      const viewMenu = document.getElementById("view-dropdown");
+      const viewBtn = document.getElementById("view-dropdown-btn");
+
+      function updateViewButton() {
+        const list = Array.from(viewSelected).sort((a, b) => a - b);
+        viewBtn.textContent = list.length
+          ? `Selected: ${list.join(",")}`
+          : "Select views";
+      }
+
+      function renderViewMenu() {
+        viewMenu.innerHTML = "";
+        const lang = document.getElementById("lang").value || "en";
+        availableViews.forEach((v) => {
+          const label = document.createElement("label");
+          const cb = document.createElement("input");
+          cb.type = "checkbox";
+          cb.value = String(v.id);
+          cb.checked = viewSelected.has(v.id);
+          cb.addEventListener("change", () => {
+            if (cb.checked) viewSelected.add(v.id);
+            else viewSelected.delete(v.id);
+            updateViewButton();
+            // Update seed column dropdown to reflect selected views
+            refreshSeedColumns();
+          });
+          const span = document.createElement("span");
+          const labelText =
+            lang === "ar"
+              ? v.descriptionAr || v.nameAr || `View ${v.id}`
+              : v.descriptionEn || v.nameEn || `View ${v.id}`;
+          span.textContent = labelText;
+          label.appendChild(cb);
+          label.appendChild(span);
+          viewMenu.appendChild(label);
+        });
+      }
+
+      function getSelectedViewIds() {
+        return Array.from(viewSelected).sort((a, b) => a - b);
+      }
+
+      viewBtn.addEventListener("click", () => {
+        const open = viewContainer.classList.toggle("open");
+        if (open) renderViewMenu();
+      });
+
+      document.addEventListener("click", (e) => {
+        if (!viewContainer.contains(e.target)) {
+          viewContainer.classList.remove("open");
+        }
+      });
+
+      async function loadViews() {
+        try {
+          const arr = await (window.App && App.Api && App.Api.getViews
+            ? App.Api.getViews()
+            : (async ()=>{
+                const res = await fetch(`${apiBase}/api/views`);
+                if (!res.ok) throw new Error(`Views API ${res.status}`);
+                return res.json();
+              })()
+          );
+          availableViews = Array.isArray(arr)
+            ? arr.map((v) => ({
+                id: v.id,
+                nameEn: v.nameEn,
+                nameAr: v.nameAr,
+                descriptionEn: v.descriptionEn,
+                descriptionAr: v.descriptionAr,
+              }))
+            : [];
+          // Preselect the first two if nothing selected yet
+          if (viewSelected.size === 0) {
+            availableViews.slice(0, 2).forEach((v) => viewSelected.add(v.id));
+          }
+          updateViewButton();
+          renderViewMenu();
+          // Ensure seed columns dropdown is populated after views load
+          await refreshSeedColumns();
+        } catch (e) {
+          console.error("Failed to load views:", e);
+          // Fallback: keep empty list, user can still enter seeds and run (server will error if viewIds empty)
+          updateViewButton();
+          await refreshSeedColumns();
+        }
+      }
+
+      // Re-render menu labels when language changes
+      document.getElementById("lang").addEventListener("change", () => {
+        if (viewContainer.classList.contains("open")) renderViewMenu();
+        refreshSeedColumns();
+      });
+
+      loadViews();
+      updateViewButton();
+      renderViewMenu();
+      // initial seed columns
+      refreshSeedColumns();
+      // Update value suggestions when column changes
+      const seedColSelect = document.getElementById('seed-col-select');
+      if (seedColSelect) seedColSelect.addEventListener('change', ()=>{
+        document.getElementById('seed-val').value='';
+        refreshSeedValuesSuggestions();
+      });
+
+      // Initialize filters UI
+      renderSeedList();
+
+      // -------- Enhancements: filters and tools (client only) --------
+      let minSupport = 1;
+      let hideLeaves = false;
+      let hubDeg = 6;
+      let currentFanoutLimit = null; // number | null
+      let stayOnPath = false;
+      const typeVisibility = new Map();
+
+      function recomputeHubsLeaves() {
+        // Only manage classes; do not change display here to avoid clobbering type filters.
+        cy.nodes().removeClass('hub leaf');
+        cy.nodes().forEach(n => {
+          const deg = n.degree();
+          if (deg === 1) n.addClass('leaf');
+          if (deg >= hubDeg) n.addClass('hub');
+        });
+      }
+
+      function ensureLegendForType(type, color) {
+        if (type == null) return;
+        const key = String(type).trim();
+        if (!key) return;
+        if (typeVisibility.has(key)) return;
+        // Default to master 'select all' state if present
+        const master = document.getElementById('legend-select-all');
+        const defaultChecked = master ? !!master.checked : true;
+        typeVisibility.set(key, defaultChecked);
+        const cont = document.getElementById('legend-types');
+        if (!cont) return;
+        const wrap = document.createElement('div');
+        wrap.className = 'legend-item';
+        const cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.checked = defaultChecked;
+        cb.addEventListener('change', ()=>{
+          typeVisibility.set(key, !!cb.checked);
+          applyTypeFilter();
+          updateEdgeVisibility();
+          try { updateLegendSelectAllState(); } catch {}
+        });
+        const sw = document.createElement('span');
+        sw.className = 'legend-swatch';
+        if (color) sw.style.background = color;
+        else sw.style.background = '#64748b';
+        const lbl = document.createElement('span');
+        lbl.className = 'legend-label';
+        lbl.textContent = key;
+        wrap.appendChild(cb);
+        wrap.appendChild(sw);
+        wrap.appendChild(lbl);
+        cont.appendChild(wrap);
+        try { updateLegendSelectAllState(); } catch {}
+      }
+
+      function updateLegendSelectAllState() {
+        const master = document.getElementById('legend-select-all');
+        if (!master) return;
+        const keys = Array.from(typeVisibility.keys());
+        if (keys.length === 0) { master.checked = true; master.indeterminate = false; return; }
+        const allTrue = keys.every(k => typeVisibility.get(k) === true);
+        const anyTrue = keys.some(k => typeVisibility.get(k) === true);
+        master.checked = allTrue;
+        master.indeterminate = !allTrue && anyTrue;
+      }
+
+      function applyTypeFilter() {
+        const pathNodes = (stayOnPath && currentPathEles) ? currentPathEles.filter('node') : null;
+        cy.nodes().forEach(n => {
+          // If focusing on path, show only nodes on the path
+          if (pathNodes) {
+            n.style('display', pathNodes.has(n) ? 'element' : 'none');
+            return;
+          }
+          // Normal (non-path) visibility rules
+          const t = (n.data('type') ?? '').toString().trim();
+          const typeAllowed = !t || !typeVisibility.has(t) || typeVisibility.get(t) === true;
+          const leafBlocked = hideLeaves && n.hasClass('leaf');
+          const show = typeAllowed && !leafBlocked;
+          n.style('display', show ? 'element' : 'none');
+        });
+      }
+
+      function applyFanoutLimitScratch() {
+        cy.edges().forEach(e => e.scratch('_hideFanout', false));
+        if (currentFanoutLimit == null) return;
+        const bySrc = new Map();
+        cy.edges().forEach(e => {
+          const s = e.data('source');
+          if (!bySrc.has(s)) bySrc.set(s, []);
+          bySrc.get(s).push(e);
+        });
+        bySrc.forEach(list => {
+          list.sort((a,b)=> (a.id() < b.id() ? -1 : 1));
+          for (let i=0;i<list.length;i++) {
+            const e = list[i];
+            if (i >= currentFanoutLimit) e.scratch('_hideFanout', true);
+          }
+        });
+      }
+
+      function updateEdgeVisibility() {
+        const pathEdges = (stayOnPath && currentPathEles) ? currentPathEles.filter('edge') : null;
+        cy.edges().forEach(e => {
+          let show = true;
+          if (pathEdges) show = pathEdges.has(e);
+          const vc = e.data('views_count');
+          if (show && vc != null && Number(vc) < minSupport) show = false;
+          if (show && e.scratch('_hideFanout')) show = false;
+          // Hide edges whose endpoints are hidden by type filter
+          if (show) {
+            try {
+              if (!e.source().visible() || !e.target().visible()) show = false;
+            } catch {}
+          }
+          e.style('display', show ? 'element' : 'none');
+        });
+      }
+
+      function reapplyFilters() {
+        applyFanoutLimitScratch();
+        // Recompute leaf/hub classes before applying visibility rules
+        recomputeHubsLeaves();
+        applyTypeFilter();
+        updateEdgeVisibility();
+        setEdgeStyleForSize();
+        adjustLabels();
+      }
+
+      document.getElementById('minSupport').addEventListener('input', (e)=>{
+        minSupport = parseInt(e.target.value, 10) || 1;
+        updateEdgeVisibility();
+      });
+      document.getElementById('hideLeaves').addEventListener('change', (e)=>{
+        hideLeaves = !!e.target.checked;
+        recomputeHubsLeaves();
+        applyTypeFilter();
+        updateEdgeVisibility();
+      });
+      document.getElementById('hubDeg').addEventListener('change', (e)=>{
+        hubDeg = Math.max(2, parseInt(e.target.value||'6',10));
+        recomputeHubsLeaves();
+      });
+      document.getElementById('labelThresh').addEventListener('change', (e)=>{
+        labelHideThreshold = Math.max(0, parseInt(e.target.value||'1500',10));
+        adjustLabels();
+      });
+      // Fanout limit applies live (debounced) and on change
+      const fanoutInput = document.getElementById('fanoutLimit');
+      function applyFanoutFromInput(){
+        const v = parseInt(fanoutInput.value||'', 10);
+        currentFanoutLimit = isNaN(v) ? null : Math.max(1, v);
+        reapplyFilters();
+      }
+      let fanoutTimer = null;
+      fanoutInput.addEventListener('change', applyFanoutFromInput);
+      fanoutInput.addEventListener('input', ()=>{
+        clearTimeout(fanoutTimer);
+        fanoutTimer = setTimeout(applyFanoutFromInput, 300);
+      });
+      document.getElementById('stayOnPath').addEventListener('change', (e)=>{
+        stayOnPath = !!e.target.checked;
+        reapplyFilters();
+      });
+      document.getElementById('btnTidy').addEventListener('click', ()=>{
+        const name = document.getElementById('layout').value;
+        cy.layout({ name, animate: isAnimate(), fit: true, padding: 20 }).run();
+      });
+      // Legends: Select all toggle
+      (function(){
+        const master = document.getElementById('legend-select-all');
+        if (master) {
+          master.addEventListener('change', ()=>{
+            const checked = !!master.checked;
+            // Update map
+            Array.from(typeVisibility.keys()).forEach(k => typeVisibility.set(k, checked));
+            // Update checkboxes in the list
+            const boxList = document.querySelectorAll('#legend-types input[type="checkbox"]');
+            boxList.forEach(inp => { inp.checked = checked; });
+            master.indeterminate = false;
+            applyTypeFilter();
+            updateEdgeVisibility();
+          });
+        }
+      })();
+      document.getElementById('btnExportPng').addEventListener('click', ()=>{
+        try {
+          const uri = cy.png({ full: true, scale: 2, bg: '#0f172a' });
+          const a = document.createElement('a');
+          a.href = uri; a.download = 'graph.png';
+          document.body.appendChild(a); a.click(); a.remove();
+        } catch (e) { console.error('Export PNG failed', e); }
+      });
+      function renderSearchTerms() {
+        const ul = document.getElementById('search-terms');
+        if (!ul) return;
+        ul.innerHTML = '';
+        searchTerms.forEach((t, idx) => {
+          const li = document.createElement('li');
+          li.className = 'hint chip';
+          li.style.margin = '2px 0';
+          const span = document.createElement('span');
+          span.className = 'tag';
+          span.textContent = t;
+          const btn = document.createElement('button');
+          btn.textContent = '×';
+          btn.className = 'chip-close';
+          btn.setAttribute('aria-label','Remove');
+          btn.addEventListener('click', () => {
+            searchTerms.splice(idx, 1);
+            renderSearchTerms();
+            // Recompute blinking for remaining terms
+            applySearchBlinkFromTerms();
+          });
+          li.appendChild(span);
+          li.appendChild(btn);
+          ul.appendChild(li);
+        });
+      }
+
+      function addSearchTermsFromInput() {
+        const raw = (document.getElementById('searchTerm').value||'').toLowerCase();
+        const terms = raw.split(/[\s,]+/).map(s=>s.trim()).filter(Boolean);
+        if (terms.length === 0) return;
+        const set = new Set(searchTerms);
+        for (const t of terms) set.add(t);
+        searchTerms = Array.from(set);
+        document.getElementById('searchTerm').value = '';
+        renderSearchTerms();
+        // Immediately apply blinking to new/combined terms
+        applySearchBlinkFromTerms();
+      }
+
+      function applySearchBlinkFromTerms() {
+        if (!searchTerms || searchTerms.length === 0) { clearSearchBlink(); return; }
+        const terms = searchTerms;
+        const matches = cy.nodes().filter(n=>{
+          const lab = (n.data('label')||'').toString().toLowerCase();
+          const col = (n.data('col')||'').toString().toLowerCase();
+          const val = (n.data('val')||'').toString().toLowerCase();
+          const id = n.id().toLowerCase();
+          return terms.some(t => lab.includes(t) || col.includes(t) || val.includes(t) || id.includes(t));
+        });
+        applySearchBlink(matches);
+        if (matches.length>0) {
+          cy.elements().unselect();
+          matches.select();
+          cy.fit(matches, 60);
+        }
+      }
+
+      document.getElementById('btnSearchAdd').addEventListener('click', ()=>{
+        addSearchTermsFromInput();
+      });
+      document.getElementById('btnSearchClear').addEventListener('click', ()=>{
+        document.getElementById('searchTerm').value='';
+        searchTerms = [];
+        renderSearchTerms();
+        clearSearchBlink();
+        cy.elements().unselect();
+      });
+
+      // Side panel toggles
+      const lp = document.getElementById('left-panel');
+      const rp = document.getElementById('right-panel');
+      document.getElementById('left-toggle').addEventListener('click', ()=>{
+        lp.classList.toggle('open');
+      });
+      document.getElementById('right-toggle').addEventListener('click', ()=>{
+        rp.classList.toggle('open');
+      });
+
+      function applySearchBlink(matches) {
+        clearSearchBlink();
+        searchMatches = matches;
+        if (!searchMatches || searchMatches.length === 0) return;
+        try { searchMatches.addClass('search-hit'); } catch {}
+        let on = true;
+        try { searchMatches.removeClass('search-blinkB').addClass('search-blinkA'); } catch {}
+        searchBlinkInterval = setInterval(()=>{
+          on = !on;
+          try {
+            if (on) { searchMatches.removeClass('search-blinkB').addClass('search-blinkA'); }
+            else { searchMatches.removeClass('search-blinkA').addClass('search-blinkB'); }
+          } catch {}
+        }, 500);
+      }
+
+      function clearSearchBlink() {
+        if (searchBlinkInterval) { try { clearInterval(searchBlinkInterval); } catch {} searchBlinkInterval = null; }
+        if (searchMatches && searchMatches.length) {
+          try { searchMatches.removeClass('search-hit search-blinkA search-blinkB'); } catch {}
+        }
+        searchMatches = null;
+      }
+
+      // -------- Node details renderer --------
+      function renderNodeDetails(n) {
+        const panel = document.getElementById("node-details");
+        if (!n) {
+          panel.textContent = "No node selected.";
+          return;
+        }
+        const id = nodeId(n.col, n.val);
+        const node = cy.getElementById(id);
+        const deg = !node.empty() ? node.degree() : 0;
+        const indeg = !node.empty() ? node.indegree() : 0;
+        const outdeg = !node.empty() ? node.outdegree() : 0;
+
+        const color = n.color || "#64748b";
+        const type = n.type || "";
+        const label = (n.label ?? "").toString();
+        const startText = pathStartId ? (() => { const e = cy.getElementById(pathStartId); return (!e || e.empty()) ? pathStartId : (e.data("label") ?? String(e.data("val") ?? pathStartId)); })() : '—';
+        const endText = pathEndId ? (() => { const e = cy.getElementById(pathEndId); return (!e || e.empty()) ? pathEndId : (e.data("label") ?? String(e.data("val") ?? pathEndId)); })() : '—';
+
+        const html = `
+          <div style="display:flex; align-items:center; gap:10px;">
+            <div style="width:14px;height:14px;border-radius:3px;background:${color};border:1px solid #0f172a;"></div>
+            <div style="font-weight:600;">${label || String(n.val)}</div>
+          </div>
+          <div style="margin-top:8px;">
+            <div><span class="tag">Column</span> ${n.col}</div>
+            <div><span class="tag">Value</span> ${String(n.val)}</div>
+            ${type ? `<div><span class=\"tag\">Type</span> ${type}</div>` : ""}
+            <div style="margin-top:6px;">
+              <span class="tag">Degree</span> ${deg} (in ${indeg} | out ${outdeg})
+            </div>
+          </div>
+          <div class="btns" style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap;">
+            <button id="copy-node-json" type="button">Copy JSON</button>
+            <button id="set-start" type="button">Set Start</button>
+            <button id="set-end" type="button">Set End</button>
+            <button id="show-path" type="button" ${pathStartId && pathEndId ? '' : 'disabled'}>Show Shortest Path</button>
+            <button id="clear-path" type="button" ${currentPathEles ? '' : 'disabled'}>Clear Path</button>
+          </div>
+          <div class="hint" style="margin-top:6px;">
+            <span class="tag">Path Start</span> ${pathStartId ?? '—'}
+            <span class="tag" style="margin-left:6px;">Path End</span> ${pathEndId ?? '—'}
+          </div>
+        `;
+        panel.innerHTML = html;
+        // Replace path labels with display text
+        try {
+          const hintDivs = panel.querySelectorAll('.hint');
+          const pathHint = hintDivs[hintDivs.length - 1];
+          if (pathHint && pathHint.innerHTML && pathHint.innerHTML.includes('Path Start')) {
+            pathHint.innerHTML = `<span class="tag">Path Start</span> ${startText} <span class="tag" style="margin-left:6px;">Path End</span> ${endText}`;
+            const toggleLbl = document.createElement('label');
+            toggleLbl.className = 'hint';
+            toggleLbl.style.cssText = 'margin-left:12px; display:inline-flex; align-items:center; gap:6px;';
+            const cb = document.createElement('input');
+            cb.type = 'checkbox';
+            cb.id = 'stayOnPathLocal';
+            cb.checked = !!stayOnPath;
+            toggleLbl.appendChild(cb);
+            toggleLbl.appendChild(document.createTextNode('Stay on Path'));
+            pathHint.appendChild(toggleLbl);
+            cb.addEventListener('change', () => {
+              stayOnPath = !!cb.checked;
+              const master = document.getElementById('stayOnPath');
+              if (master) master.checked = stayOnPath;
+              reapplyFilters();
+            });
+          }
+        } catch {}
+
+        const btn = document.getElementById("copy-node-json");
+        if (btn) {
+          btn.addEventListener("click", async () => {
+            const payload = {
+              col: n.col,
+              val: String(n.val),
+              type: type || undefined,
+              label: label,
+              color: color,
+              degree: { total: deg, in: indeg, out: outdeg },
+            };
+            try {
+              await navigator.clipboard.writeText(JSON.stringify(payload, null, 2));
+              btn.textContent = "Copied";
+              setTimeout(() => (btn.textContent = "Copy JSON"), 1200);
+            } catch {}
+          });
+        }
+
+        const btnStart = document.getElementById("set-start");
+        if (btnStart) btnStart.addEventListener("click", () => { pathStartId = id; renderNodeDetails(n); });
+        const btnEnd = document.getElementById("set-end");
+        if (btnEnd) btnEnd.addEventListener("click", () => { pathEndId = id; renderNodeDetails(n); });
+        const btnShow = document.getElementById("show-path");
+        if (btnShow) btnShow.addEventListener("click", () => { showShortestPath(); });
+        const btnClear = document.getElementById("clear-path");
+        if (btnClear) btnClear.addEventListener("click", () => { clearShortestPath(); renderNodeDetails(n); });
+      }
+
+      function clearShortestPath() {
+        try { cy.stop(); } catch {}
+        for (const t of pathTimers) clearTimeout(t);
+        pathTimers = [];
+        if (pathBlinkInterval) { try { clearInterval(pathBlinkInterval); } catch {} pathBlinkInterval = null; }
+        // Remove highlight from any previously marked elements, even if collection reference lost
+        cy.elements('.sp').removeClass('sp');
+        cy.edges().removeClass('sp-blinkA sp-blinkB');
+        if (pathStartId) cy.getElementById(pathStartId).removeClass('sp-start');
+        if (pathEndId) cy.getElementById(pathEndId).removeClass('sp-end');
+        // Clear any per-edge path direction/colour data
+        cy.edges().forEach(e => { try { e.removeData('spDir'); e.removeData('spColor'); } catch {} });
+        currentPathEles = null;
+        reapplyFilters();
+      }
+
+      function isAnimate() {
+        const el = document.getElementById("animate");
+        return !el ? true : !!el.checked;
+      }
+
+      function showShortestPath() {
+        if (!pathStartId || !pathEndId) return;
+        const start = cy.getElementById(pathStartId);
+        const end = cy.getElementById(pathEndId);
+        if (start.empty() || end.empty()) {
+          alert("Start or End node is not in the current graph.");
+          return;
+        }
+        // Clear previous highlight
+        clearShortestPath();
+        // Use A* on current graph; treat as undirected for flexibility
+        const result = cy.elements().aStar({ root: start, goal: end, directed: false });
+        if (!result.found) {
+          alert("No path found in current graph. Try expanding more.");
+          return;
+        }
+        currentPathEles = result.path;
+        // Mark start/end
+        try { start.addClass('sp-start'); } catch {}
+        try { end.addClass('sp-end'); } catch {}
+
+        // Set direction attribute for each edge along the path based on start->end order
+        const seq = currentPathEles.toArray();
+        for (let i = 1; i < seq.length - 1; i++) {
+          const ele = seq[i];
+          if (!ele.isEdge()) continue;
+          const prev = seq[i - 1];
+          const next = seq[i + 1];
+          if (!prev || !next || !prev.isNode() || !next.isNode()) continue;
+          const src = ele.data('source');
+          const tgt = ele.data('target');
+          const forward = (src === prev.id() && tgt === next.id());
+          try { ele.data('spDir', forward ? 'forward' : 'reverse'); } catch {}
+        }
+
+        if (isAnimate()) {
+          const ordered = currentPathEles.toArray();
+          // Bring edges forward in z-order a bit
+          try { cy.edges().removeClass('sp'); } catch {}
+          ordered.forEach((ele, idx) => {
+            const t = setTimeout(() => { try { ele.addClass('sp'); } catch {} }, idx * 60);
+            pathTimers.push(t);
+          });
+          const total = ordered.length * 60 + 100;
+          pathTimers.push(setTimeout(() => {
+          try { cy.animate({ fit: { eles: currentPathEles.union(start).union(end), padding: 40 }, duration: 400 }); } catch {}
+          // Apply path visibility if requested
+          reapplyFilters();
+            // start blinking after reveal
+            startPathBlink();
+          }, total));
+        } else {
+          currentPathEles.addClass("sp");
+          cy.fit(currentPathEles.union(start).union(end), 40);
+          // Apply path visibility if requested; do not blink when animate is off
+          reapplyFilters();
+        }
+
+        // If stay-on-path is enabled, hide non-path edges
+        updateEdgeVisibility();
+
+        // Refresh panel buttons state
+        const sel = cy.nodes(":selected").first();
+        if (sel && typeof sel.empty === 'function' && !sel.empty()) renderNodeDetails(sel.data());
+      }
+
+      function startPathBlink() {
+        if (pathBlinkInterval) { try { clearInterval(pathBlinkInterval); } catch {} }
+        const edges = currentPathEles ? currentPathEles.filter('edge') : cy.collection();
+        if (!edges || edges.length === 0) return;
+        // Initialize to A state
+        try { edges.removeClass('sp-blinkB').addClass('sp-blinkA'); } catch {}
+        let on = true;
+        pathBlinkInterval = setInterval(() => {
+          on = !on;
+          try {
+            if (on) { edges.removeClass('sp-blinkB').addClass('sp-blinkA'); }
+            else { edges.removeClass('sp-blinkA').addClass('sp-blinkB'); }
+          } catch {}
+        }, 500);
+      }
