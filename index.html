@@ -542,11 +542,24 @@
           const cols = await res.json();
           const sel = document.getElementById("seed-col-select");
           sel.innerHTML = "";
-          (cols || []).forEach(c => {
+          (cols || []).forEach(item => {
             const opt = document.createElement("option");
-            opt.value = opt.textContent = c;
+            if (item && typeof item === 'object' && 'id' in item) {
+              opt.value = String(item.id);
+              opt.textContent = String(item.text ?? item.id);
+            } else {
+              const c = String(item ?? '');
+              opt.value = c; opt.textContent = c;
+            }
             sel.appendChild(opt);
           });
+          if (!sel.options.length) {
+            const opt = document.createElement('option');
+            opt.value = '';
+            opt.textContent = '— No active columns —';
+            opt.disabled = true; opt.selected = true;
+            sel.appendChild(opt);
+          }
         } catch (e) {
           // Fallback to columns in current graph
           const sel = document.getElementById("seed-col-select");

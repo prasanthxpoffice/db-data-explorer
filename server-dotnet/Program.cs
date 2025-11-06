@@ -158,13 +158,33 @@ app.MapGet("/api/seed/columns", async (HttpRequest http) =>
         cmd.Parameters.Add(new SqlParameter("@ViewIDs", SqlDbType.Structured) { TypeName = "dbgraph.IntList", Value = ToIntList(viewIds) });
         cmd.Parameters.Add(new SqlParameter("@Lang", SqlDbType.NVarChar, 2) { Value = lang2 });
 
-        var cols = new List<string>();
+        var list = new List<Dictionary<string, string>>();
         await using var rdr = await cmd.ExecuteReaderAsync();
         while (await rdr.ReadAsync())
         {
-            if (!rdr.IsDBNull(0)) cols.Add(rdr.GetString(0));
+            if (rdr.FieldCount >= 2)
+            {
+                var id = rdr.IsDBNull(0) ? null : Convert.ToString(rdr.GetValue(0));
+                var text = rdr.IsDBNull(1) ? null : Convert.ToString(rdr.GetValue(1));
+                if (!string.IsNullOrWhiteSpace(id))
+                {
+                    list.Add(new Dictionary<string, string> { ["id"] = id!, ["text"] = string.IsNullOrWhiteSpace(text) ? id! : text! });
+                }
+            }
+            else if (rdr.FieldCount >= 1 && !rdr.IsDBNull(0))
+            {
+                var id = Convert.ToString(rdr.GetValue(0)) ?? string.Empty;
+                if (!string.IsNullOrWhiteSpace(id))
+                    list.Add(new Dictionary<string, string> { ["id"] = id, ["text"] = id });
+            }
         }
-        return Results.Json(cols.Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(s => s).ToArray());
+        // Deduplicate by id while preserving first label
+        var dedup = list
+            .GroupBy(x => x["id"], StringComparer.OrdinalIgnoreCase)
+            .Select(g => g.First())
+            .OrderBy(x => x["text"], StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        return Results.Json(dedup);
     }
     catch (Exception ex)
     {
