@@ -761,6 +761,7 @@
       let currentFanoutLimit = null; // number | null
       let stayOnPath = false;
       const typeVisibility = new Map();
+      const typeColor = new Map();
 
       function recomputeHubsLeaves() {
         // Only manage classes; do not change display here to avoid clobbering type filters.
@@ -772,40 +773,49 @@
         });
       }
 
+      function renderLegendList() {
+        const cont = document.getElementById('legend-types');
+        if (!cont) return;
+        cont.innerHTML = '';
+        const keys = Array.from(typeVisibility.keys()).sort((a,b)=> a.localeCompare(b, undefined, { sensitivity: 'base' }));
+        keys.forEach(key => {
+          const wrap = document.createElement('div');
+          wrap.className = 'legend-item';
+          const cb = document.createElement('input');
+          cb.type = 'checkbox';
+          cb.checked = !!typeVisibility.get(key);
+          cb.addEventListener('change', ()=>{
+            typeVisibility.set(key, !!cb.checked);
+            applyTypeFilter();
+            updateEdgeVisibility();
+            try { updateLegendSelectAllState(); } catch {}
+          });
+          const sw = document.createElement('span');
+          sw.className = 'legend-swatch';
+          const col = typeColor.get(key) || '#64748b';
+          sw.style.background = col;
+          const lbl = document.createElement('span');
+          lbl.className = 'legend-label';
+          lbl.textContent = key;
+          wrap.appendChild(cb);
+          wrap.appendChild(sw);
+          wrap.appendChild(lbl);
+          cont.appendChild(wrap);
+        });
+        try { updateLegendSelectAllState(); } catch {}
+      }
+
       function ensureLegendForType(type, color) {
         if (type == null) return;
         const key = String(type).trim();
         if (!key) return;
-        if (typeVisibility.has(key)) return;
-        // Default to master 'select all' state if present
-        const master = document.getElementById('legend-select-all');
-        const defaultChecked = master ? !!master.checked : true;
-        typeVisibility.set(key, defaultChecked);
-        const cont = document.getElementById('legend-types');
-        if (!cont) return;
-        const wrap = document.createElement('div');
-        wrap.className = 'legend-item';
-        const cb = document.createElement('input');
-        cb.type = 'checkbox';
-        cb.checked = defaultChecked;
-        cb.addEventListener('change', ()=>{
-          typeVisibility.set(key, !!cb.checked);
-          applyTypeFilter();
-          updateEdgeVisibility();
-          try { updateLegendSelectAllState(); } catch {}
-        });
-        const sw = document.createElement('span');
-        sw.className = 'legend-swatch';
-        if (color) sw.style.background = color;
-        else sw.style.background = '#64748b';
-        const lbl = document.createElement('span');
-        lbl.className = 'legend-label';
-        lbl.textContent = key;
-        wrap.appendChild(cb);
-        wrap.appendChild(sw);
-        wrap.appendChild(lbl);
-        cont.appendChild(wrap);
-        try { updateLegendSelectAllState(); } catch {}
+        if (!typeVisibility.has(key)) {
+          const master = document.getElementById('legend-select-all');
+          const defaultChecked = master ? !!master.checked : true;
+          typeVisibility.set(key, defaultChecked);
+        }
+        if (color && !typeColor.has(key)) typeColor.set(key, color);
+        renderLegendList();
       }
 
       function updateLegendSelectAllState() {
