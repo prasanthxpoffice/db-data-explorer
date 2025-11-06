@@ -4,72 +4,91 @@ EXEC sys.sp_dropextendedproperty @name=N'MS_DiagramPaneCount' , @level0type=N'SC
 GO
 EXEC sys.sp_dropextendedproperty @name=N'MS_DiagramPane1' , @level0type=N'SCHEMA',@level0name=N'dbgraph', @level1type=N'VIEW',@level1name=N'DemoIncidentsViewEn'
 GO
-/****** Object:  StoredProcedure [dbgraph].[TraverseStep_MultiViews_PerViewExclude_Lang]    Script Date: 11/5/2025 2:06:41 PM ******/
+/****** Object:  StoredProcedure [dbgraph].[TraverseStep_MultiViews_PerViewExclude_Lang]    Script Date: 11/6/2025 4:59:18 PM ******/
 DROP PROCEDURE [dbgraph].[TraverseStep_MultiViews_PerViewExclude_Lang]
 GO
-/****** Object:  StoredProcedure [dbgraph].[TraverseStep_FromRegisteredView_FastCore_Lang]    Script Date: 11/5/2025 2:06:41 PM ******/
+/****** Object:  StoredProcedure [dbgraph].[TraverseStep_FromRegisteredView_FastCore_Lang]    Script Date: 11/6/2025 4:59:18 PM ******/
 DROP PROCEDURE [dbgraph].[TraverseStep_FromRegisteredView_FastCore_Lang]
+GO
+/****** Object:  StoredProcedure [dbgraph].[SeedColumns_SyncCatalog]    Script Date: 11/6/2025 4:59:18 PM ******/
+DROP PROCEDURE [dbgraph].[SeedColumns_SyncCatalog]
+GO
+/****** Object:  StoredProcedure [dbgraph].[GetSeedValues]    Script Date: 11/6/2025 4:59:18 PM ******/
+DROP PROCEDURE [dbgraph].[GetSeedValues]
+GO
+/****** Object:  StoredProcedure [dbgraph].[GetSeedColumns]    Script Date: 11/6/2025 4:59:18 PM ******/
+DROP PROCEDURE [dbgraph].[GetSeedColumns]
 GO
 ALTER TABLE [dbgraph].[ViewColumnMap] DROP CONSTRAINT [FK_ViewColumnMap_ViewRegistry]
 GO
-/****** Object:  Index [UX_ViewRegistry_En]    Script Date: 11/5/2025 2:06:41 PM ******/
+ALTER TABLE [dbgraph].[SeedColumnCatalog] DROP CONSTRAINT [DF_SeedCol_LastSeen]
+GO
+ALTER TABLE [dbgraph].[SeedColumnCatalog] DROP CONSTRAINT [DF_SeedCol_FirstSeen]
+GO
+ALTER TABLE [dbgraph].[SeedColumnCatalog] DROP CONSTRAINT [DF_SeedCol_IsActive]
+GO
+/****** Object:  Index [UX_ViewRegistry_En]    Script Date: 11/6/2025 4:59:18 PM ******/
 DROP INDEX [UX_ViewRegistry_En] ON [dbgraph].[ViewRegistry]
 GO
-/****** Object:  Index [UX_ViewRegistry_Ar]    Script Date: 11/5/2025 2:06:41 PM ******/
+/****** Object:  Index [UX_ViewRegistry_Ar]    Script Date: 11/6/2025 4:59:18 PM ******/
 DROP INDEX [UX_ViewRegistry_Ar] ON [dbgraph].[ViewRegistry]
 GO
-/****** Object:  Table [dbgraph].[ViewRegistry]    Script Date: 11/5/2025 2:06:41 PM ******/
+/****** Object:  Table [dbgraph].[ViewRegistry]    Script Date: 11/6/2025 4:59:18 PM ******/
 IF  EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbgraph].[ViewRegistry]') AND type in (N'U'))
 DROP TABLE [dbgraph].[ViewRegistry]
 GO
-/****** Object:  Table [dbgraph].[ViewColumnMap]    Script Date: 11/5/2025 2:06:41 PM ******/
+/****** Object:  Table [dbgraph].[ViewColumnMap]    Script Date: 11/6/2025 4:59:18 PM ******/
 IF  EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbgraph].[ViewColumnMap]') AND type in (N'U'))
 DROP TABLE [dbgraph].[ViewColumnMap]
 GO
-/****** Object:  View [dbgraph].[DemoIncidentsViewAr]    Script Date: 11/5/2025 2:06:41 PM ******/
+/****** Object:  Table [dbgraph].[SeedColumnCatalog]    Script Date: 11/6/2025 4:59:18 PM ******/
+IF  EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbgraph].[SeedColumnCatalog]') AND type in (N'U'))
+DROP TABLE [dbgraph].[SeedColumnCatalog]
+GO
+/****** Object:  View [dbgraph].[DemoIncidentsViewAr]    Script Date: 11/6/2025 4:59:18 PM ******/
 DROP VIEW [dbgraph].[DemoIncidentsViewAr]
 GO
-/****** Object:  View [dbgraph].[DemoIncidentsViewEn]    Script Date: 11/5/2025 2:06:41 PM ******/
+/****** Object:  View [dbgraph].[DemoIncidentsViewEn]    Script Date: 11/6/2025 4:59:18 PM ******/
 DROP VIEW [dbgraph].[DemoIncidentsViewEn]
 GO
-/****** Object:  Table [dbgraph].[DemoIncidents]    Script Date: 11/5/2025 2:06:41 PM ******/
+/****** Object:  Table [dbgraph].[DemoIncidents]    Script Date: 11/6/2025 4:59:18 PM ******/
 IF  EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbgraph].[DemoIncidents]') AND type in (N'U'))
 DROP TABLE [dbgraph].[DemoIncidents]
 GO
-/****** Object:  View [dbgraph].[CompanyViewAr]    Script Date: 11/5/2025 2:06:41 PM ******/
+/****** Object:  View [dbgraph].[CompanyViewAr]    Script Date: 11/6/2025 4:59:18 PM ******/
 DROP VIEW [dbgraph].[CompanyViewAr]
 GO
-/****** Object:  View [dbgraph].[EmployeeViewEn]    Script Date: 11/5/2025 2:06:41 PM ******/
+/****** Object:  View [dbgraph].[EmployeeViewEn]    Script Date: 11/6/2025 4:59:18 PM ******/
 DROP VIEW [dbgraph].[EmployeeViewEn]
 GO
-/****** Object:  View [dbgraph].[EmployeeViewAr]    Script Date: 11/5/2025 2:06:41 PM ******/
+/****** Object:  View [dbgraph].[EmployeeViewAr]    Script Date: 11/6/2025 4:59:18 PM ******/
 DROP VIEW [dbgraph].[EmployeeViewAr]
 GO
-/****** Object:  View [dbgraph].[CompanyViewEn]    Script Date: 11/5/2025 2:06:41 PM ******/
+/****** Object:  View [dbgraph].[CompanyViewEn]    Script Date: 11/6/2025 4:59:18 PM ******/
 DROP VIEW [dbgraph].[CompanyViewEn]
 GO
-/****** Object:  Table [dbgraph].[DemoRows]    Script Date: 11/5/2025 2:06:41 PM ******/
+/****** Object:  Table [dbgraph].[DemoRows]    Script Date: 11/6/2025 4:59:18 PM ******/
 IF  EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbgraph].[DemoRows]') AND type in (N'U'))
 DROP TABLE [dbgraph].[DemoRows]
 GO
-/****** Object:  UserDefinedTableType [dbgraph].[ViewColValPair]    Script Date: 11/5/2025 2:06:41 PM ******/
+/****** Object:  UserDefinedTableType [dbgraph].[ViewColValPair]    Script Date: 11/6/2025 4:59:18 PM ******/
 DROP TYPE [dbgraph].[ViewColValPair]
 GO
-/****** Object:  UserDefinedTableType [dbgraph].[IntList]    Script Date: 11/5/2025 2:06:41 PM ******/
+/****** Object:  UserDefinedTableType [dbgraph].[IntList]    Script Date: 11/6/2025 4:59:18 PM ******/
 DROP TYPE [dbgraph].[IntList]
 GO
-/****** Object:  UserDefinedTableType [dbgraph].[ColValPair]    Script Date: 11/5/2025 2:06:41 PM ******/
+/****** Object:  UserDefinedTableType [dbgraph].[ColValPair]    Script Date: 11/6/2025 4:59:18 PM ******/
 DROP TYPE [dbgraph].[ColValPair]
 GO
-/****** Object:  Schema [dbgraph]    Script Date: 11/5/2025 2:06:41 PM ******/
+/****** Object:  Schema [dbgraph]    Script Date: 11/6/2025 4:59:18 PM ******/
 DROP SCHEMA [dbgraph]
 GO
 USE [master]
 GO
-/****** Object:  Database [IAS]    Script Date: 11/5/2025 2:06:41 PM ******/
+/****** Object:  Database [IAS]    Script Date: 11/6/2025 4:59:18 PM ******/
 DROP DATABASE [IAS]
 GO
-/****** Object:  Database [IAS]    Script Date: 11/5/2025 2:06:41 PM ******/
+/****** Object:  Database [IAS]    Script Date: 11/6/2025 4:59:18 PM ******/
 CREATE DATABASE [IAS]
  CONTAINMENT = NONE
  ON  PRIMARY 
@@ -149,10 +168,10 @@ ALTER DATABASE [IAS] SET QUERY_STORE = OFF
 GO
 USE [IAS]
 GO
-/****** Object:  Schema [dbgraph]    Script Date: 11/5/2025 2:06:41 PM ******/
+/****** Object:  Schema [dbgraph]    Script Date: 11/6/2025 4:59:18 PM ******/
 CREATE SCHEMA [dbgraph]
 GO
-/****** Object:  UserDefinedTableType [dbgraph].[ColValPair]    Script Date: 11/5/2025 2:06:41 PM ******/
+/****** Object:  UserDefinedTableType [dbgraph].[ColValPair]    Script Date: 11/6/2025 4:59:18 PM ******/
 CREATE TYPE [dbgraph].[ColValPair] AS TABLE(
 	[col] [sysname] NOT NULL,
 	[val] [nvarchar](4000) NOT NULL,
@@ -163,7 +182,7 @@ CREATE TYPE [dbgraph].[ColValPair] AS TABLE(
 )WITH (IGNORE_DUP_KEY = OFF)
 )
 GO
-/****** Object:  UserDefinedTableType [dbgraph].[IntList]    Script Date: 11/5/2025 2:06:41 PM ******/
+/****** Object:  UserDefinedTableType [dbgraph].[IntList]    Script Date: 11/6/2025 4:59:18 PM ******/
 CREATE TYPE [dbgraph].[IntList] AS TABLE(
 	[id] [int] NOT NULL,
 	PRIMARY KEY CLUSTERED 
@@ -172,7 +191,7 @@ CREATE TYPE [dbgraph].[IntList] AS TABLE(
 )WITH (IGNORE_DUP_KEY = OFF)
 )
 GO
-/****** Object:  UserDefinedTableType [dbgraph].[ViewColValPair]    Script Date: 11/5/2025 2:06:41 PM ******/
+/****** Object:  UserDefinedTableType [dbgraph].[ViewColValPair]    Script Date: 11/6/2025 4:59:18 PM ******/
 CREATE TYPE [dbgraph].[ViewColValPair] AS TABLE(
 	[ViewID] [int] NOT NULL,
 	[col] [sysname] NOT NULL,
@@ -185,7 +204,7 @@ CREATE TYPE [dbgraph].[ViewColValPair] AS TABLE(
 )WITH (IGNORE_DUP_KEY = OFF)
 )
 GO
-/****** Object:  Table [dbgraph].[DemoRows]    Script Date: 11/5/2025 2:06:41 PM ******/
+/****** Object:  Table [dbgraph].[DemoRows]    Script Date: 11/6/2025 4:59:18 PM ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -209,7 +228,7 @@ CREATE TABLE [dbgraph].[DemoRows](
 	[COLOR_D] [nvarchar](30) NULL
 ) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
 GO
-/****** Object:  View [dbgraph].[CompanyViewEn]    Script Date: 11/5/2025 2:06:41 PM ******/
+/****** Object:  View [dbgraph].[CompanyViewEn]    Script Date: 11/6/2025 4:59:18 PM ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -218,7 +237,7 @@ GO
 CREATE VIEW [dbgraph].[CompanyViewEn]  AS
 SELECT * FROM dbgraph.DemoRows;
 GO
-/****** Object:  View [dbgraph].[EmployeeViewAr]    Script Date: 11/5/2025 2:06:41 PM ******/
+/****** Object:  View [dbgraph].[EmployeeViewAr]    Script Date: 11/6/2025 4:59:18 PM ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -226,7 +245,7 @@ GO
 CREATE VIEW [dbgraph].[EmployeeViewAr] AS
 SELECT * FROM dbgraph.DemoRows;
 GO
-/****** Object:  View [dbgraph].[EmployeeViewEn]    Script Date: 11/5/2025 2:06:41 PM ******/
+/****** Object:  View [dbgraph].[EmployeeViewEn]    Script Date: 11/6/2025 4:59:18 PM ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -235,7 +254,7 @@ GO
 CREATE VIEW [dbgraph].[EmployeeViewEn] AS
 SELECT * FROM dbgraph.DemoRows;
 GO
-/****** Object:  View [dbgraph].[CompanyViewAr]    Script Date: 11/5/2025 2:06:41 PM ******/
+/****** Object:  View [dbgraph].[CompanyViewAr]    Script Date: 11/6/2025 4:59:18 PM ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -243,7 +262,7 @@ GO
 CREATE VIEW [dbgraph].[CompanyViewAr]  AS
 SELECT * FROM dbgraph.DemoRows;
 GO
-/****** Object:  Table [dbgraph].[DemoIncidents]    Script Date: 11/5/2025 2:06:41 PM ******/
+/****** Object:  Table [dbgraph].[DemoIncidents]    Script Date: 11/6/2025 4:59:18 PM ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -303,7 +322,7 @@ CREATE TABLE [dbgraph].[DemoIncidents](
 	[COLOR_SourceType] [nvarchar](8) NULL
 ) ON [PRIMARY]
 GO
-/****** Object:  View [dbgraph].[DemoIncidentsViewEn]    Script Date: 11/5/2025 2:06:41 PM ******/
+/****** Object:  View [dbgraph].[DemoIncidentsViewEn]    Script Date: 11/6/2025 4:59:18 PM ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -315,7 +334,7 @@ AS
 SELECT       *
 FROM            dbgraph.DemoIncidents
 GO
-/****** Object:  View [dbgraph].[DemoIncidentsViewAr]    Script Date: 11/5/2025 2:06:41 PM ******/
+/****** Object:  View [dbgraph].[DemoIncidentsViewAr]    Script Date: 11/6/2025 4:59:18 PM ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -328,7 +347,25 @@ AS
 SELECT        *
 FROM            dbgraph.DemoIncidents
 GO
-/****** Object:  Table [dbgraph].[ViewColumnMap]    Script Date: 11/5/2025 2:06:41 PM ******/
+/****** Object:  Table [dbgraph].[SeedColumnCatalog]    Script Date: 11/6/2025 4:59:18 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbgraph].[SeedColumnCatalog](
+	[Column_ID] [sysname] NOT NULL,
+	[ColumnEn] [nvarchar](200) NULL,
+	[ColumnAr] [nvarchar](200) NULL,
+	[IsActive] [bit] NOT NULL,
+	[FirstSeenAt] [datetime2](7) NOT NULL,
+	[LastSeenAt] [datetime2](7) NOT NULL,
+ CONSTRAINT [PK_SeedColumnCatalog] PRIMARY KEY CLUSTERED 
+(
+	[Column_ID] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+/****** Object:  Table [dbgraph].[ViewColumnMap]    Script Date: 11/6/2025 4:59:18 PM ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -345,7 +382,7 @@ CREATE TABLE [dbgraph].[ViewColumnMap](
 )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
 ) ON [PRIMARY]
 GO
-/****** Object:  Table [dbgraph].[ViewRegistry]    Script Date: 11/5/2025 2:06:41 PM ******/
+/****** Object:  Table [dbgraph].[ViewRegistry]    Script Date: 11/6/2025 4:59:18 PM ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -500,6 +537,40 @@ INSERT [dbgraph].[DemoRows] ([NT_A], [ID_AID], [TEXT_ATEXT], [COLOR_A], [NT_B], 
 GO
 INSERT [dbgraph].[DemoRows] ([NT_A], [ID_AID], [TEXT_ATEXT], [COLOR_A], [NT_B], [ID_BID], [TEXT_BTEXT], [COLOR_B], [NT_C], [ID_CID], [TEXT_CTEXT], [COLOR_C], [NT_D], [ID_DID], [TEXT_DTEXT], [COLOR_D]) VALUES (N'Member', N'1', N'Prasanth', N'#0000FF', NULL, N'2', N'GEMS', N'#00FF00', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL)
 GO
+INSERT [dbgraph].[SeedColumnCatalog] ([Column_ID], [ColumnEn], [ColumnAr], [IsActive], [FirstSeenAt], [LastSeenAt]) VALUES (N'ID_AID', N'Member', N'العضو', 1, CAST(N'2025-11-06T05:46:37.0360254' AS DateTime2), CAST(N'2025-11-06T05:46:37.0360254' AS DateTime2))
+GO
+INSERT [dbgraph].[SeedColumnCatalog] ([Column_ID], [ColumnEn], [ColumnAr], [IsActive], [FirstSeenAt], [LastSeenAt]) VALUES (N'ID_BID', N'Company', N'الشركة', 1, CAST(N'2025-11-06T05:46:37.0360254' AS DateTime2), CAST(N'2025-11-06T05:46:37.0360254' AS DateTime2))
+GO
+INSERT [dbgraph].[SeedColumnCatalog] ([Column_ID], [ColumnEn], [ColumnAr], [IsActive], [FirstSeenAt], [LastSeenAt]) VALUES (N'ID_CharacterID', N'ID_CharacterID', N'ID_CharacterID', 1, CAST(N'2025-11-06T05:46:37.0360254' AS DateTime2), CAST(N'2025-11-06T05:46:37.0360254' AS DateTime2))
+GO
+INSERT [dbgraph].[SeedColumnCatalog] ([Column_ID], [ColumnEn], [ColumnAr], [IsActive], [FirstSeenAt], [LastSeenAt]) VALUES (N'ID_CID', N'Car', N'سيارة', 1, CAST(N'2025-11-06T05:46:37.0360254' AS DateTime2), CAST(N'2025-11-06T05:46:37.0360254' AS DateTime2))
+GO
+INSERT [dbgraph].[SeedColumnCatalog] ([Column_ID], [ColumnEn], [ColumnAr], [IsActive], [FirstSeenAt], [LastSeenAt]) VALUES (N'ID_CountryID', N'ID_CountryID', N'ID_CountryID', 1, CAST(N'2025-11-06T05:46:37.0360254' AS DateTime2), CAST(N'2025-11-06T05:46:37.0360254' AS DateTime2))
+GO
+INSERT [dbgraph].[SeedColumnCatalog] ([Column_ID], [ColumnEn], [ColumnAr], [IsActive], [FirstSeenAt], [LastSeenAt]) VALUES (N'ID_DID', N'Family', N'عائلة', 1, CAST(N'2025-11-06T05:46:37.0360254' AS DateTime2), CAST(N'2025-11-06T05:46:37.0360254' AS DateTime2))
+GO
+INSERT [dbgraph].[SeedColumnCatalog] ([Column_ID], [ColumnEn], [ColumnAr], [IsActive], [FirstSeenAt], [LastSeenAt]) VALUES (N'ID_ImplementAganistID', N'ID_ImplementAganistID', N'ID_ImplementAganistID', 1, CAST(N'2025-11-06T05:46:37.0360254' AS DateTime2), CAST(N'2025-11-06T05:46:37.0360254' AS DateTime2))
+GO
+INSERT [dbgraph].[SeedColumnCatalog] ([Column_ID], [ColumnEn], [ColumnAr], [IsActive], [FirstSeenAt], [LastSeenAt]) VALUES (N'ID_ImplementID', N'ID_ImplementID', N'ID_ImplementID', 1, CAST(N'2025-11-06T05:46:37.0360254' AS DateTime2), CAST(N'2025-11-06T05:46:37.0360254' AS DateTime2))
+GO
+INSERT [dbgraph].[SeedColumnCatalog] ([Column_ID], [ColumnEn], [ColumnAr], [IsActive], [FirstSeenAt], [LastSeenAt]) VALUES (N'ID_IncidentTypeID', N'ID_IncidentTypeID', N'ID_IncidentTypeID', 1, CAST(N'2025-11-06T05:46:37.0360254' AS DateTime2), CAST(N'2025-11-06T05:46:37.0360254' AS DateTime2))
+GO
+INSERT [dbgraph].[SeedColumnCatalog] ([Column_ID], [ColumnEn], [ColumnAr], [IsActive], [FirstSeenAt], [LastSeenAt]) VALUES (N'ID_InformationID', N'ID_InformationID', N'ID_InformationID', 1, CAST(N'2025-11-06T05:46:37.0360254' AS DateTime2), CAST(N'2025-11-06T05:46:37.0360254' AS DateTime2))
+GO
+INSERT [dbgraph].[SeedColumnCatalog] ([Column_ID], [ColumnEn], [ColumnAr], [IsActive], [FirstSeenAt], [LastSeenAt]) VALUES (N'ID_OperationTypeID', N'ID_OperationTypeID', N'ID_OperationTypeID', 1, CAST(N'2025-11-06T05:46:37.0360254' AS DateTime2), CAST(N'2025-11-06T05:46:37.0360254' AS DateTime2))
+GO
+INSERT [dbgraph].[SeedColumnCatalog] ([Column_ID], [ColumnEn], [ColumnAr], [IsActive], [FirstSeenAt], [LastSeenAt]) VALUES (N'ID_OrganizationID', N'ID_OrganizationID', N'ID_OrganizationID', 1, CAST(N'2025-11-06T05:46:37.0360254' AS DateTime2), CAST(N'2025-11-06T05:46:37.0360254' AS DateTime2))
+GO
+INSERT [dbgraph].[SeedColumnCatalog] ([Column_ID], [ColumnEn], [ColumnAr], [IsActive], [FirstSeenAt], [LastSeenAt]) VALUES (N'ID_RegionID', N'ID_RegionID', N'ID_RegionID', 1, CAST(N'2025-11-06T05:46:37.0360254' AS DateTime2), CAST(N'2025-11-06T05:46:37.0360254' AS DateTime2))
+GO
+INSERT [dbgraph].[SeedColumnCatalog] ([Column_ID], [ColumnEn], [ColumnAr], [IsActive], [FirstSeenAt], [LastSeenAt]) VALUES (N'ID_SourceTypeID', N'ID_SourceTypeID', N'ID_SourceTypeID', 1, CAST(N'2025-11-06T05:46:37.0360254' AS DateTime2), CAST(N'2025-11-06T05:46:37.0360254' AS DateTime2))
+GO
+INSERT [dbgraph].[SeedColumnCatalog] ([Column_ID], [ColumnEn], [ColumnAr], [IsActive], [FirstSeenAt], [LastSeenAt]) VALUES (N'ID_StateID', N'ID_StateID', N'ID_StateID', 1, CAST(N'2025-11-06T05:46:37.0360254' AS DateTime2), CAST(N'2025-11-06T05:46:37.0360254' AS DateTime2))
+GO
+INSERT [dbgraph].[SeedColumnCatalog] ([Column_ID], [ColumnEn], [ColumnAr], [IsActive], [FirstSeenAt], [LastSeenAt]) VALUES (N'ID_VillageID', N'ID_VillageID', N'ID_VillageID', 1, CAST(N'2025-11-06T05:46:37.0360254' AS DateTime2), CAST(N'2025-11-06T05:46:37.0360254' AS DateTime2))
+GO
+INSERT [dbgraph].[SeedColumnCatalog] ([Column_ID], [ColumnEn], [ColumnAr], [IsActive], [FirstSeenAt], [LastSeenAt]) VALUES (N'ID_WeaponID', N'ID_WeaponID', N'ID_WeaponID', 1, CAST(N'2025-11-06T05:46:37.0360254' AS DateTime2), CAST(N'2025-11-06T05:46:37.0360254' AS DateTime2))
+GO
 INSERT [dbgraph].[ViewColumnMap] ([ViewID], [ColumnName], [DisplayNameEn], [DisplayNameAr]) VALUES (1, N'ID_AID', N'Member', N'العضو')
 GO
 INSERT [dbgraph].[ViewColumnMap] ([ViewID], [ColumnName], [DisplayNameEn], [DisplayNameAr]) VALUES (1, N'ID_BID', N'Company', N'الشركة')
@@ -528,7 +599,7 @@ SET IDENTITY_INSERT [dbgraph].[ViewRegistry] OFF
 GO
 SET ANSI_PADDING ON
 GO
-/****** Object:  Index [UX_ViewRegistry_Ar]    Script Date: 11/5/2025 2:06:41 PM ******/
+/****** Object:  Index [UX_ViewRegistry_Ar]    Script Date: 11/6/2025 4:59:19 PM ******/
 CREATE UNIQUE NONCLUSTERED INDEX [UX_ViewRegistry_Ar] ON [dbgraph].[ViewRegistry]
 (
 	[ViewDB] ASC,
@@ -538,7 +609,7 @@ CREATE UNIQUE NONCLUSTERED INDEX [UX_ViewRegistry_Ar] ON [dbgraph].[ViewRegistry
 GO
 SET ANSI_PADDING ON
 GO
-/****** Object:  Index [UX_ViewRegistry_En]    Script Date: 11/5/2025 2:06:41 PM ******/
+/****** Object:  Index [UX_ViewRegistry_En]    Script Date: 11/6/2025 4:59:19 PM ******/
 CREATE UNIQUE NONCLUSTERED INDEX [UX_ViewRegistry_En] ON [dbgraph].[ViewRegistry]
 (
 	[ViewDB] ASC,
@@ -546,13 +617,218 @@ CREATE UNIQUE NONCLUSTERED INDEX [UX_ViewRegistry_En] ON [dbgraph].[ViewRegistry
 	[ViewNameEn] ASC
 )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, SORT_IN_TEMPDB = OFF, IGNORE_DUP_KEY = OFF, DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
 GO
+ALTER TABLE [dbgraph].[SeedColumnCatalog] ADD  CONSTRAINT [DF_SeedCol_IsActive]  DEFAULT ((0)) FOR [IsActive]
+GO
+ALTER TABLE [dbgraph].[SeedColumnCatalog] ADD  CONSTRAINT [DF_SeedCol_FirstSeen]  DEFAULT (sysutcdatetime()) FOR [FirstSeenAt]
+GO
+ALTER TABLE [dbgraph].[SeedColumnCatalog] ADD  CONSTRAINT [DF_SeedCol_LastSeen]  DEFAULT (sysutcdatetime()) FOR [LastSeenAt]
+GO
 ALTER TABLE [dbgraph].[ViewColumnMap]  WITH CHECK ADD  CONSTRAINT [FK_ViewColumnMap_ViewRegistry] FOREIGN KEY([ViewID])
 REFERENCES [dbgraph].[ViewRegistry] ([ViewID])
 ON DELETE CASCADE
 GO
 ALTER TABLE [dbgraph].[ViewColumnMap] CHECK CONSTRAINT [FK_ViewColumnMap_ViewRegistry]
 GO
-/****** Object:  StoredProcedure [dbgraph].[TraverseStep_FromRegisteredView_FastCore_Lang]    Script Date: 11/5/2025 2:06:41 PM ******/
+/****** Object:  StoredProcedure [dbgraph].[GetSeedColumns]    Script Date: 11/6/2025 4:59:19 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE   PROCEDURE [dbgraph].[GetSeedColumns]
+@ViewIDs dbgraph.IntList READONLY,
+@Lang NVARCHAR(2) = N'en'
+AS
+BEGIN
+SET NOCOUNT ON;
+
+DECLARE @V TABLE(oid INT NOT NULL);
+INSERT @V(oid)
+SELECT OBJECT_ID(QUOTENAME(ViewDB)+N'.'+QUOTENAME(ViewSchema)+N'.'+QUOTENAME(ViewNameEn))
+FROM dbgraph.ViewRegistry vr
+WHERE EXISTS (SELECT 1 FROM @ViewIDs x WHERE x.id = vr.ViewID)
+AND vr.ViewNameEn IS NOT NULL;
+
+IF NOT EXISTS (SELECT 1 FROM @V)
+BEGIN
+SELECT CAST(NULL AS SYSNAME) AS Column_ID, CAST(NULL AS NVARCHAR(200)) AS DisplayName WHERE 1=0;
+RETURN;
+END
+
+;WITH C AS (
+SELECT DISTINCT c.name AS Column_ID
+FROM @V v
+JOIN sys.columns c ON c.object_id = v.oid
+WHERE c.name LIKE N'ID[_]%' -- bracket escape, no ESCAPE clause needed
+)
+SELECT s.Column_ID,
+DisplayName = CASE WHEN LOWER(@Lang) LIKE 'ar%'
+THEN COALESCE(s.ColumnAr, s.ColumnEn, s.Column_ID)
+ELSE COALESCE(s.ColumnEn, s.ColumnAr, s.Column_ID) END
+FROM dbgraph.SeedColumnCatalog s
+JOIN C ON C.Column_ID = s.Column_ID
+WHERE s.IsActive = 1
+ORDER BY DisplayName, s.Column_ID;
+END
+GO
+/****** Object:  StoredProcedure [dbgraph].[GetSeedValues]    Script Date: 11/6/2025 4:59:19 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE   PROCEDURE [dbgraph].[GetSeedValues]
+  @Col      SYSNAME,                -- e.g., ID_CID  (pattern: ID_<group>ID)
+  @Term     NVARCHAR(4000) = N'',   -- TEXT-only prefix filter (case-insensitive)
+  @PageSize INT = 20,               -- first N items
+  @ViewIDs  dbgraph.IntList READONLY,
+  @Lang     NVARCHAR(2) = N'en'
+AS
+BEGIN
+  SET NOCOUNT ON;
+
+  IF @PageSize IS NULL OR @PageSize < 1 SET @PageSize = 20;
+  IF @PageSize > 200 SET @PageSize = 200;
+
+  -- Resolve selected views using English physical names
+  DECLARE @V TABLE(db SYSNAME, sch SYSNAME, vw SYSNAME, oid INT);
+  INSERT @V(db, sch, vw, oid)
+  SELECT vr.ViewDB, vr.ViewSchema, vr.ViewNameEn,
+         OBJECT_ID(QUOTENAME(vr.ViewDB)+N'.'+QUOTENAME(vr.ViewSchema)+N'.'+QUOTENAME(vr.ViewNameEn))
+  FROM dbgraph.ViewRegistry vr
+  WHERE EXISTS (SELECT 1 FROM @ViewIDs x WHERE x.id = vr.ViewID)
+    AND vr.ViewNameEn IS NOT NULL;
+
+  IF NOT EXISTS (SELECT 1 FROM @V)
+  BEGIN
+    SELECT CAST(NULL AS NVARCHAR(4000)) AS val, CAST(NULL AS NVARCHAR(4000)) AS label WHERE 1=0;
+    RETURN;
+  END
+
+  -- Ensure ID column exists in at least one selected view
+  IF NOT EXISTS (
+      SELECT 1 FROM @V v JOIN sys.columns c ON c.object_id = v.oid
+      WHERE c.name = @Col
+  )
+  BEGIN
+    RAISERROR('Unknown or disallowed column: %s', 16, 1, @Col);
+    RETURN;
+  END
+
+  -- Extract <group> and build label column: TEXT_<group>TEXT
+  DECLARE @grp SYSNAME = @Col;
+
+  -- Strip leading 'ID_'
+  IF LEFT(@grp, 3) = N'ID_'
+    SET @grp = SUBSTRING(@grp, 4, LEN(@grp));
+
+  -- Strip trailing '_ID' first; else strip trailing 'ID'
+  IF RIGHT(@grp, 3) = N'_ID'
+    SET @grp = LEFT(@grp, LEN(@grp) - 3);
+  ELSE IF RIGHT(@grp, 2) = N'ID'
+    SET @grp = LEFT(@grp, LEN(@grp) - 2);
+
+  DECLARE @LabelCol SYSNAME = N'TEXT_' + @grp + N'TEXT';
+
+  -- Keep only views that have BOTH the ID column and the exact TEXT_<group>TEXT column
+  CREATE TABLE #S (db SYSNAME, sch SYSNAME, vw SYSNAME);
+  INSERT #S(db, sch, vw)
+  SELECT v.db, v.sch, v.vw
+  FROM @V v
+  WHERE EXISTS (SELECT 1 FROM sys.columns c WHERE c.object_id = v.oid AND c.name = @Col)
+    AND EXISTS (SELECT 1 FROM sys.columns c WHERE c.object_id = v.oid AND c.name = @LabelCol);
+
+  IF NOT EXISTS (SELECT 1 FROM #S)
+  BEGIN
+    SELECT CAST(NULL AS NVARCHAR(4000)) AS val, CAST(NULL AS NVARCHAR(4000)) AS label WHERE 1=0;
+    RETURN;
+  END
+
+  -- Build union across qualifying views; TEXT-only prefix filter (case-insensitive, accent-insensitive)
+  DECLARE @sql NVARCHAR(MAX) =
+    (SELECT STRING_AGG(CAST(
+        N'SELECT DISTINCT ' +
+        N'  CONVERT(NVARCHAR(4000), t.' + QUOTENAME(@Col)      + N') AS val, ' +
+        N'  CONVERT(NVARCHAR(4000), t.' + QUOTENAME(@LabelCol) + N') AS label ' +
+        N'FROM ' + QUOTENAME(s.db) + N'.' + QUOTENAME(s.sch) + N'.' + QUOTENAME(s.vw) + N' AS t ' +
+        N'WHERE (@Term = N'''' OR CONVERT(NVARCHAR(4000), t.' + QUOTENAME(@LabelCol) + N') COLLATE Latin1_General_CI_AI LIKE @Term + N''%'' )'
+      AS NVARCHAR(MAX)), N' UNION ALL ')
+     FROM #S s);
+
+  DECLARE @final NVARCHAR(MAX) = N'
+    WITH U AS (' + @sql + N')
+    SELECT TOP (@Lim)
+           MIN(val) AS val,  -- representative ID for each label
+           label
+    FROM U
+    WHERE label IS NOT NULL AND label <> N''''
+    GROUP BY label
+    ORDER BY label;';
+
+  EXEC sp_executesql @final,
+                     N'@Term NVARCHAR(4000), @Lim INT',
+                     @Term = @Term, @Lim = @PageSize;
+END
+GO
+/****** Object:  StoredProcedure [dbgraph].[SeedColumns_SyncCatalog]    Script Date: 11/6/2025 4:59:19 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE   PROCEDURE [dbgraph].[SeedColumns_SyncCatalog]
+  @PruneMissing BIT = 1     -- 1 = hard delete rows no longer present in any registered view
+AS
+BEGIN
+  SET NOCOUNT ON;
+
+  BEGIN TRY
+    BEGIN TRAN;
+
+    DECLARE @V TABLE(oid INT NOT NULL);
+    INSERT @V(oid)
+    SELECT OBJECT_ID(QUOTENAME(ViewDB)+N'.'+QUOTENAME(ViewSchema)+N'.'+QUOTENAME(ViewNameEn))
+    FROM dbgraph.ViewRegistry
+    WHERE ViewNameEn IS NOT NULL;
+
+    ;WITH C AS (
+      SELECT DISTINCT c.name AS Column_ID
+      FROM @V v
+      JOIN sys.columns c ON c.object_id = v.oid
+      WHERE c.name LIKE N'ID\_%' ESCAPE N'\'
+    )
+    SELECT Column_ID INTO #All FROM C;
+
+    -- Insert new ID_ columns
+    INSERT INTO dbgraph.SeedColumnCatalog (Column_ID)
+    SELECT a.Column_ID
+    FROM #All a
+    LEFT JOIN dbgraph.SeedColumnCatalog s ON s.Column_ID = a.Column_ID
+    WHERE s.Column_ID IS NULL;
+
+    -- Touch LastSeenAt for all seen this run
+    UPDATE s
+    SET LastSeenAt = SYSUTCDATETIME()
+    FROM dbgraph.SeedColumnCatalog s
+    JOIN #All a ON a.Column_ID = s.Column_ID;
+
+    -- Hard delete missing, if requested
+    IF @PruneMissing = 1
+    BEGIN
+      DELETE s
+      FROM dbgraph.SeedColumnCatalog s
+      LEFT JOIN #All a ON a.Column_ID = s.Column_ID
+      WHERE a.Column_ID IS NULL;
+    END
+
+    COMMIT;
+  END TRY
+  BEGIN CATCH
+    IF XACT_STATE() <> 0 ROLLBACK;
+    DECLARE @msg NVARCHAR(4000) = ERROR_MESSAGE();
+    RAISERROR(@msg, 16, 1);
+  END CATCH
+END;
+GO
+/****** Object:  StoredProcedure [dbgraph].[TraverseStep_FromRegisteredView_FastCore_Lang]    Script Date: 11/6/2025 4:59:19 PM ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -763,7 +1039,7 @@ OPTION (RECOMPILE);';
       @ViewID=@ViewID, @Depth=@Depth, @MaxFanout=@MaxFanout;
 END
 GO
-/****** Object:  StoredProcedure [dbgraph].[TraverseStep_MultiViews_PerViewExclude_Lang]    Script Date: 11/5/2025 2:06:41 PM ******/
+/****** Object:  StoredProcedure [dbgraph].[TraverseStep_MultiViews_PerViewExclude_Lang]    Script Date: 11/6/2025 4:59:19 PM ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
