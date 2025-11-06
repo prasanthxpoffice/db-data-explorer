@@ -200,7 +200,6 @@ app.MapGet("/api/seed/values", async (HttpRequest http) =>
         var col = (http.Query["col"].ToString() ?? string.Empty).Trim();
         if (string.IsNullOrWhiteSpace(col)) return Results.BadRequest(new { error = "Missing `col`" });
         var term = (http.Query["term"].ToString() ?? string.Empty).Trim();
-        var after = http.Query["after"].ToString();
         var lang = (http.Query["lang"].ToString() ?? "en").Trim();
         var lang2 = lang[..Math.Min(2, lang.Length)];
         var pageSize = 25;
@@ -215,26 +214,28 @@ app.MapGet("/api/seed/values", async (HttpRequest http) =>
         };
         cmd.Parameters.Add(new SqlParameter("@Col", SqlDbType.NVarChar, 128) { Value = col });
         cmd.Parameters.Add(new SqlParameter("@Term", SqlDbType.NVarChar, 4000) { Value = term });
-        cmd.Parameters.Add(new SqlParameter("@After", SqlDbType.NVarChar, 4000) { Value = string.IsNullOrEmpty(after) ? DBNull.Value : after });
         cmd.Parameters.Add(new SqlParameter("@PageSize", SqlDbType.Int) { Value = pageSize });
         cmd.Parameters.Add(new SqlParameter("@ViewIDs", SqlDbType.Structured) { TypeName = "dbgraph.IntList", Value = ToIntList(viewIds) });
         cmd.Parameters.Add(new SqlParameter("@Lang", SqlDbType.NVarChar, 2) { Value = lang2 });
 
-        var list = new List<string>();
+        var items = new List<Dictionary<string, string>>();
         await using var rdr = await cmd.ExecuteReaderAsync();
         while (await rdr.ReadAsync())
         {
-            if (!rdr.IsDBNull(0)) list.Add(Convert.ToString(rdr.GetValue(0)) ?? "");
+            var id = rdr.IsDBNull(0) ? null : Convert.ToString(rdr.GetValue(0));
+            var text = rdr.FieldCount >= 2 && !rdr.IsDBNull(1) ? Convert.ToString(rdr.GetValue(1)) : null;
+            if (!string.IsNullOrWhiteSpace(id))
+            {
+                items.Add(new Dictionary<string, string>
+                {
+                    ["id"] = id!,
+                    ["text"] = string.IsNullOrWhiteSpace(text) ? id! : text!
+                });
+            }
         }
 
-        // The proc should return up to pageSize+1 rows; if we got more than pageSize, set next
-        string? next = null;
-        if (list.Count > pageSize)
-        {
-            next = list[^1];
-            list.RemoveAt(list.Count - 1);
-        }
-        return Results.Json(new { items = list, next });
+        // This proc returns at most @PageSize distinct results; no cursor paging
+        return Results.Json(new { items, next = (string?)null });
     }
     catch (Exception ex)
     {

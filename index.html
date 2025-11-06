@@ -119,7 +119,9 @@
           <div>
             <label>Seeds (Frontier)</label>
             <div class="row">
-              <select id="seed-col-select"></select>
+              <select id="seed-col-select">
+                <option value="">--</option>
+              </select>
               <div style="display:flex; gap:6px; align-items:end;">
                 <div style="flex:1">
                   <input id="seed-val" type="text" placeholder="Value (e.g. 1)" list="seedVals-list" />
@@ -487,7 +489,8 @@
           const li = document.createElement("li");
           li.className = "hint";
           li.style.margin = "2px 0";
-          li.textContent = `${s.col} = ${s.val}`;
+          const disp = (s.label ?? s.val);
+          li.textContent = `${s.col} = ${disp}`;
           const btn = document.createElement("button");
           btn.textContent = "Remove";
           btn.style.marginLeft = "8px";
@@ -503,13 +506,26 @@
       document.getElementById("add-seed").addEventListener("click", () => {
         const sel = document.getElementById("seed-col-select");
         const col = sel && sel.value ? sel.value.trim() : "";
-        const val = (document.getElementById("seed-val").value || "").trim();
-        if (!col || !val) {
-          alert("Pick a column and enter a value.");
-          return;
+        const valInput = document.getElementById("seed-val");
+        const typed = (valInput.value || "").trim();
+        if (!col || !typed) { alert("Pick a column and enter a value."); return; }
+        // Map the typed label back to the ID using datalist options
+        let idVal = typed;
+        let label = typed;
+        const list = document.getElementById("seedVals-list");
+        if (list) {
+          const match = Array.from(list.children).find(o => o.value === typed);
+          if (match && match.getAttribute) {
+            const d = match.getAttribute('data-id');
+            if (d) idVal = d;
+            // label remains the visible text (typed)
+          }
         }
-        seeds.push({ col, val });
-        document.getElementById("seed-val").value = "";
+        // De-dupe by (col, val)
+        const key = `${col}|${idVal}`;
+        const exists = seeds.some(s => `${s.col}|${String(s.val)}` === key);
+        if (!exists) seeds.push({ col, val: idVal, label });
+        valInput.value = "";
         renderSeedList();
       });
 
@@ -519,7 +535,12 @@
         sel.forEach(n => {
           const col = n.data("col");
           const val = String(n.data("val"));
-          if (col && val) seeds.push({ col, val });
+          const label = (n.data("label") ?? val).toString();
+          if (col && val) {
+            const key = `${col}|${val}`;
+            const exists = seeds.some(s => `${s.col}|${String(s.val)}` === key);
+            if (!exists) seeds.push({ col, val, label });
+          }
         });
         renderSeedList();
       });
@@ -542,6 +563,13 @@
           const cols = await res.json();
           const sel = document.getElementById("seed-col-select");
           sel.innerHTML = "";
+          if (Array.isArray(cols) && cols.length) {
+            const def = document.createElement('option');
+            def.value = '';
+            def.textContent = '--';
+            def.selected = true;
+            sel.appendChild(def);
+          }
           (cols || []).forEach(item => {
             const opt = document.createElement("option");
             if (item && typeof item === 'object' && 'id' in item) {
@@ -560,13 +588,20 @@
             opt.disabled = true; opt.selected = true;
             sel.appendChild(opt);
           }
-        } catch (e) {
-          // Fallback to columns in current graph
-          const sel = document.getElementById("seed-col-select");
-          const seen = new Set();
-          sel.innerHTML = "";
-          cy.nodes().forEach(n=>{ const c=n.data("col"); if (c && !seen.has(c)) { seen.add(c); const opt=document.createElement("option"); opt.value=opt.textContent=c; sel.appendChild(opt);} });
-        }
+          } catch (e) {
+            // Fallback to columns in current graph
+            const sel = document.getElementById("seed-col-select");
+            const seen = new Set();
+            sel.innerHTML = "";
+            cy.nodes().forEach(n=>{ const c=n.data("col"); if (c && !seen.has(c)) { seen.add(c); const opt=document.createElement("option"); opt.value=opt.textContent=c; sel.appendChild(opt);} });
+            if (sel.options.length) {
+              const def = document.createElement('option');
+              def.value = '';
+              def.textContent = '--';
+              def.selected = true;
+              sel.insertBefore(def, sel.firstChild);
+            }
+          }
         // Trigger a value suggestions refresh
         refreshSeedValuesSuggestions();
       }
@@ -593,8 +628,16 @@
             const payload = await res.json();
             const list = document.getElementById("seedVals-list");
             list.innerHTML = "";
-            (payload.items || []).forEach(v => {
-              const o = document.createElement("option"); o.value = v; list.appendChild(o);
+            (payload.items || []).forEach(it => {
+              const o = document.createElement("option");
+              if (it && typeof it === 'object' && 'id' in it) {
+                o.value = String(it.text ?? it.id); // show label to user
+                o.setAttribute('data-id', String(it.id)); // keep underlying ID
+              } else {
+                const v = String(it ?? '');
+                o.value = v;
+              }
+              list.appendChild(o);
             });
           } catch (e) {
             // swallow for now
