@@ -134,18 +134,12 @@
               <button id="add-seed-selected" type="button">Add From Selection</button>
               <button id="clear-seeds" type="button">Clear Seeds</button>
             </div>
-            <div class="hint">
-              Seeds are <code>{ col, val }</code> pairs. Pick a column, then a value. You can also add from currently selected nodes.
-            </div>
             <ul id="seed-list" style="list-style: none; padding-left: 0; margin-top: 8px"></ul>
           </div>
 
           <div class="btns">
             <button id="run">Run Step</button>
             <button id="clear">Clear Graph</button>
-          </div>
-          <div class="hint">
-            Tip: select a node in the graph to auto-expand.
           </div>
         </div>
       </div>
@@ -490,7 +484,8 @@
           li.className = "hint";
           li.style.margin = "2px 0";
           const disp = (s.label ?? s.val);
-          li.textContent = `${s.col} = ${disp}`;
+          const colName = s.colLabel || s.col;
+          li.textContent = `${colName} = ${disp}`;
           const btn = document.createElement("button");
           btn.textContent = "Remove";
           btn.style.marginLeft = "8px";
@@ -506,6 +501,7 @@
       document.getElementById("add-seed").addEventListener("click", () => {
         const sel = document.getElementById("seed-col-select");
         const col = sel && sel.value ? sel.value.trim() : "";
+        const colLabel = sel && sel.selectedIndex >= 0 ? (sel.options[sel.selectedIndex].textContent || col) : col;
         const valInput = document.getElementById("seed-val");
         const typed = (valInput.value || "").trim();
         if (!col || !typed) { alert("Pick a column and enter a value."); return; }
@@ -524,7 +520,7 @@
         // De-dupe by (col, val)
         const key = `${col}|${idVal}`;
         const exists = seeds.some(s => `${s.col}|${String(s.val)}` === key);
-        if (!exists) seeds.push({ col, val: idVal, label });
+        if (!exists) seeds.push({ col, colLabel, val: idVal, label });
         valInput.value = "";
         renderSeedList();
       });
@@ -535,11 +531,13 @@
         sel.forEach(n => {
           const col = n.data("col");
           const val = String(n.data("val"));
+          const colSel = document.getElementById("seed-col-select");
+          const colLabel = (colSel && colSel.selectedIndex >= 0) ? (colSel.options[colSel.selectedIndex].textContent || col) : col;
           const label = (n.data("label") ?? val).toString();
           if (col && val) {
             const key = `${col}|${val}`;
             const exists = seeds.some(s => `${s.col}|${String(s.val)}` === key);
-            if (!exists) seeds.push({ col, val, label });
+            if (!exists) seeds.push({ col, colLabel, val, label });
           }
         });
         renderSeedList();
@@ -1200,6 +1198,8 @@
         const color = n.color || "#64748b";
         const type = n.type || "";
         const label = (n.label ?? "").toString();
+        const startText = pathStartId ? (() => { const e = cy.getElementById(pathStartId); return (!e || e.empty()) ? pathStartId : (e.data("label") ?? String(e.data("val") ?? pathStartId)); })() : '—';
+        const endText = pathEndId ? (() => { const e = cy.getElementById(pathEndId); return (!e || e.empty()) ? pathEndId : (e.data("label") ?? String(e.data("val") ?? pathEndId)); })() : '—';
 
         const html = `
           <div style="display:flex; align-items:center; gap:10px;">
@@ -1227,6 +1227,14 @@
           </div>
         `;
         panel.innerHTML = html;
+        // Replace path labels with display text
+        try {
+          const hintDivs = panel.querySelectorAll('.hint');
+          const pathHint = hintDivs[hintDivs.length - 1];
+          if (pathHint && pathHint.innerHTML && pathHint.innerHTML.includes('Path Start')) {
+            pathHint.innerHTML = `<span class="tag">Path Start</span> ${startText} <span class="tag" style="margin-left:6px;">Path End</span> ${endText}`;
+          }
+        } catch {}
 
         const btn = document.getElementById("copy-node-json");
         if (btn) {
