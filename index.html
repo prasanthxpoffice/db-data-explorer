@@ -119,25 +119,23 @@
           <div>
             <label>Seeds (Frontier)</label>
             <div class="row">
-              <input
-                id="seed-col"
-                type="text"
-                placeholder="Column (e.g. ID_AID)"
-              />
-              <input id="seed-val" type="text" placeholder="Value (e.g. 1)" />
+              <select id="seed-col-select"></select>
+              <div style="display:flex; gap:6px; align-items:end;">
+                <div style="flex:1">
+                  <input id="seed-val" type="text" placeholder="Value (e.g. 1)" list="seedVals-list" />
+                  <datalist id="seedVals-list"></datalist>
+                </div>
+                <button id="add-seed" type="button">Add</button>
+              </div>
             </div>
             <div class="btns" style="margin-top: 8px">
-              <button id="add-seed" type="button">Add Seed</button>
+              <button id="add-seed-selected" type="button">Add From Selection</button>
               <button id="clear-seeds" type="button">Clear Seeds</button>
             </div>
             <div class="hint">
-              Seeds are <code>{ col, val }</code> pairs. Example: col
-              <code>ID_AID</code>, val <code>1</code>.
+              Seeds are <code>{ col, val }</code> pairs. Pick a column, then a value. You can also add from currently selected nodes.
             </div>
-            <ul
-              id="seed-list"
-              style="list-style: none; padding-left: 0; margin-top: 8px"
-            ></ul>
+            <ul id="seed-list" style="list-style: none; padding-left: 0; margin-top: 8px"></ul>
           </div>
 
           <div class="btns">
@@ -503,15 +501,26 @@
       }
 
       document.getElementById("add-seed").addEventListener("click", () => {
-        const col = (document.getElementById("seed-col").value || "").trim();
+        const sel = document.getElementById("seed-col-select");
+        const col = sel && sel.value ? sel.value.trim() : "";
         const val = (document.getElementById("seed-val").value || "").trim();
         if (!col || !val) {
-          alert("Enter both Column and Value.");
+          alert("Pick a column and enter a value.");
           return;
         }
         seeds.push({ col, val });
-        document.getElementById("seed-col").value = "";
         document.getElementById("seed-val").value = "";
+        renderSeedList();
+      });
+
+      document.getElementById("add-seed-selected").addEventListener("click", () => {
+        const sel = cy.nodes(":selected");
+        if (!sel.length) { alert("Select node(s) in the graph to add."); return; }
+        sel.forEach(n => {
+          const col = n.data("col");
+          const val = String(n.data("val"));
+          if (col && val) seeds.push({ col, val });
+        });
         renderSeedList();
       });
 
@@ -519,6 +528,68 @@
         seeds = [];
         renderSeedList();
       });
+
+      // ---- Seed dropdowns powered by the API ----
+      async function refreshSeedColumns() {
+        try {
+          const viewIds = getSelectedViewIds();
+          const lang = document.getElementById("lang").value || "en";
+          const qs = new URLSearchParams();
+          if (viewIds && viewIds.length) qs.set("viewIds", viewIds.join(","));
+          qs.set("lang", lang);
+          const res = await fetch(`${apiBase}/api/seed/columns?${qs.toString()}`);
+          if (!res.ok) throw new Error(`seed columns ${res.status}`);
+          const cols = await res.json();
+          const sel = document.getElementById("seed-col-select");
+          sel.innerHTML = "";
+          (cols || []).forEach(c => {
+            const opt = document.createElement("option");
+            opt.value = opt.textContent = c;
+            sel.appendChild(opt);
+          });
+        } catch (e) {
+          // Fallback to columns in current graph
+          const sel = document.getElementById("seed-col-select");
+          const seen = new Set();
+          sel.innerHTML = "";
+          cy.nodes().forEach(n=>{ const c=n.data("col"); if (c && !seen.has(c)) { seen.add(c); const opt=document.createElement("option"); opt.value=opt.textContent=c; sel.appendChild(opt);} });
+        }
+        // Trigger a value suggestions refresh
+        refreshSeedValuesSuggestions();
+      }
+
+      let seedValTimer = null;
+      async function refreshSeedValuesSuggestions() {
+        clearTimeout(seedValTimer);
+        seedValTimer = setTimeout(async () => {
+          try {
+            const sel = document.getElementById("seed-col-select");
+            const col = sel && sel.value ? sel.value : "";
+            const term = (document.getElementById("seed-val").value || "").trim();
+            if (!col) return;
+            const viewIds = getSelectedViewIds();
+            const lang = document.getElementById("lang").value || "en";
+            const qs = new URLSearchParams();
+            qs.set("col", col);
+            if (term) qs.set("term", term);
+            if (viewIds && viewIds.length) qs.set("viewIds", viewIds.join(","));
+            qs.set("lang", lang);
+            qs.set("pageSize", "30");
+            const res = await fetch(`${apiBase}/api/seed/values?${qs.toString()}`);
+            if (!res.ok) throw new Error(`seed values ${res.status}`);
+            const payload = await res.json();
+            const list = document.getElementById("seedVals-list");
+            list.innerHTML = "";
+            (payload.items || []).forEach(v => {
+              const o = document.createElement("option"); o.value = v; list.appendChild(o);
+            });
+          } catch (e) {
+            // swallow for now
+          }
+        }, 200);
+      }
+
+      document.getElementById("seed-val").addEventListener("input", refreshSeedValuesSuggestions);
 
       function buildPayloadFromUI() {
         const viewIds = getSelectedViewIds();
@@ -721,6 +792,8 @@
             if (cb.checked) viewSelected.add(v.id);
             else viewSelected.delete(v.id);
             updateViewButton();
+            // Update seed column dropdown to reflect selected views
+            refreshSeedColumns();
           });
           const span = document.createElement("span");
           const labelText =
@@ -769,21 +842,33 @@
           }
           updateViewButton();
           renderViewMenu();
+          // Ensure seed columns dropdown is populated after views load
+          await refreshSeedColumns();
         } catch (e) {
           console.error("Failed to load views:", e);
           // Fallback: keep empty list, user can still enter seeds and run (server will error if viewIds empty)
           updateViewButton();
+          await refreshSeedColumns();
         }
       }
 
       // Re-render menu labels when language changes
       document.getElementById("lang").addEventListener("change", () => {
         if (viewContainer.classList.contains("open")) renderViewMenu();
+        refreshSeedColumns();
       });
 
       loadViews();
       updateViewButton();
       renderViewMenu();
+      // initial seed columns
+      refreshSeedColumns();
+      // Update value suggestions when column changes
+      const seedColSelect = document.getElementById('seed-col-select');
+      if (seedColSelect) seedColSelect.addEventListener('change', ()=>{
+        document.getElementById('seed-val').value='';
+        refreshSeedValuesSuggestions();
+      });
 
       // Initialize filters UI
       renderSeedList();
@@ -797,12 +882,12 @@
       const typeVisibility = new Map();
 
       function recomputeHubsLeaves() {
+        // Only manage classes; do not change display here to avoid clobbering type filters.
         cy.nodes().removeClass('hub leaf');
         cy.nodes().forEach(n => {
           const deg = n.degree();
           if (deg === 1) n.addClass('leaf');
           if (deg >= hubDeg) n.addClass('hub');
-          if (hideLeaves && deg === 1) n.style('display', 'none'); else n.style('display', 'element');
         });
       }
 
@@ -840,8 +925,10 @@
       function applyTypeFilter() {
         cy.nodes().forEach(n => {
           const t = (n.data('type') ?? '').toString().trim();
-          const allowed = !t || !typeVisibility.has(t) || typeVisibility.get(t) === true;
-          n.style('display', allowed ? 'element' : 'none');
+          const typeAllowed = !t || !typeVisibility.has(t) || typeVisibility.get(t) === true;
+          const leafBlocked = hideLeaves && n.hasClass('leaf');
+          const show = typeAllowed && !leafBlocked;
+          n.style('display', show ? 'element' : 'none');
         });
       }
 
@@ -883,8 +970,9 @@
 
       function reapplyFilters() {
         applyFanoutLimitScratch();
-        applyTypeFilter();
+        // Recompute leaf/hub classes before applying visibility rules
         recomputeHubsLeaves();
+        applyTypeFilter();
         updateEdgeVisibility();
         setEdgeStyleForSize();
         adjustLabels();
@@ -897,6 +985,8 @@
       document.getElementById('hideLeaves').addEventListener('change', (e)=>{
         hideLeaves = !!e.target.checked;
         recomputeHubsLeaves();
+        applyTypeFilter();
+        updateEdgeVisibility();
       });
       document.getElementById('hubDeg').addEventListener('change', (e)=>{
         hubDeg = Math.max(2, parseInt(e.target.value||'6',10));

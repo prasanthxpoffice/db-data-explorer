@@ -139,6 +139,89 @@ app.MapPost("/api/traverseStepMulti", async (HttpRequest http) =>
     }
 });
 
+// ---- Seed helper endpoints ----
+// GET /api/seed/columns?viewIds=1,2&lang=en
+app.MapGet("/api/seed/columns", async (HttpRequest http) =>
+{
+    try
+    {
+        var viewIds = ParseIntListFromQuery(http, "viewIds");
+        var lang = (http.Query["lang"].ToString() ?? "en").Trim();
+        var lang2 = lang[..Math.Min(2, lang.Length)];
+
+        await using var c = new SqlConnection(connStr);
+        await c.OpenAsync();
+        await using var cmd = new SqlCommand("dbgraph.GetSeedColumns", c)
+        {
+            CommandType = CommandType.StoredProcedure
+        };
+        cmd.Parameters.Add(new SqlParameter("@ViewIDs", SqlDbType.Structured) { TypeName = "dbgraph.IntList", Value = ToIntList(viewIds) });
+        cmd.Parameters.Add(new SqlParameter("@Lang", SqlDbType.NVarChar, 2) { Value = lang2 });
+
+        var cols = new List<string>();
+        await using var rdr = await cmd.ExecuteReaderAsync();
+        while (await rdr.ReadAsync())
+        {
+            if (!rdr.IsDBNull(0)) cols.Add(rdr.GetString(0));
+        }
+        return Results.Json(cols.Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(s => s).ToArray());
+    }
+    catch (Exception ex)
+    {
+        return Results.Json(new { error = ex.Message }, statusCode: 500);
+    }
+});
+
+// GET /api/seed/values?col=ID_AID&term=jo&pageSize=25&after=...&viewIds=1,2&lang=en
+app.MapGet("/api/seed/values", async (HttpRequest http) =>
+{
+    try
+    {
+        var col = (http.Query["col"].ToString() ?? string.Empty).Trim();
+        if (string.IsNullOrWhiteSpace(col)) return Results.BadRequest(new { error = "Missing `col`" });
+        var term = (http.Query["term"].ToString() ?? string.Empty).Trim();
+        var after = http.Query["after"].ToString();
+        var lang = (http.Query["lang"].ToString() ?? "en").Trim();
+        var lang2 = lang[..Math.Min(2, lang.Length)];
+        var pageSize = 25;
+        if (int.TryParse(http.Query["pageSize"], out var ps)) pageSize = Math.Clamp(ps, 1, 200);
+        var viewIds = ParseIntListFromQuery(http, "viewIds");
+
+        await using var c = new SqlConnection(connStr);
+        await c.OpenAsync();
+        await using var cmd = new SqlCommand("dbgraph.GetSeedValues", c)
+        {
+            CommandType = CommandType.StoredProcedure
+        };
+        cmd.Parameters.Add(new SqlParameter("@Col", SqlDbType.NVarChar, 128) { Value = col });
+        cmd.Parameters.Add(new SqlParameter("@Term", SqlDbType.NVarChar, 4000) { Value = term });
+        cmd.Parameters.Add(new SqlParameter("@After", SqlDbType.NVarChar, 4000) { Value = string.IsNullOrEmpty(after) ? DBNull.Value : after });
+        cmd.Parameters.Add(new SqlParameter("@PageSize", SqlDbType.Int) { Value = pageSize });
+        cmd.Parameters.Add(new SqlParameter("@ViewIDs", SqlDbType.Structured) { TypeName = "dbgraph.IntList", Value = ToIntList(viewIds) });
+        cmd.Parameters.Add(new SqlParameter("@Lang", SqlDbType.NVarChar, 2) { Value = lang2 });
+
+        var list = new List<string>();
+        await using var rdr = await cmd.ExecuteReaderAsync();
+        while (await rdr.ReadAsync())
+        {
+            if (!rdr.IsDBNull(0)) list.Add(Convert.ToString(rdr.GetValue(0)) ?? "");
+        }
+
+        // The proc should return up to pageSize+1 rows; if we got more than pageSize, set next
+        string? next = null;
+        if (list.Count > pageSize)
+        {
+            next = list[^1];
+            list.RemoveAt(list.Count - 1);
+        }
+        return Results.Json(new { items = list, next });
+    }
+    catch (Exception ex)
+    {
+        return Results.Json(new { error = ex.Message }, statusCode: 500);
+    }
+});
+
 var port = Environment.GetEnvironmentVariable("PORT");
 if (!string.IsNullOrWhiteSpace(port))
 {
@@ -146,6 +229,23 @@ if (!string.IsNullOrWhiteSpace(port))
 }
 
 app.Run();
+
+static List<int> ParseIntListFromQuery(HttpRequest http, string key)
+{
+    var vals = new List<int>();
+    var raw = http.Query[key].ToString();
+    if (!string.IsNullOrWhiteSpace(raw))
+    {
+        foreach (var part in raw.Split(new[] { ',', ' ', ';' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+            if (int.TryParse(part, out var v)) vals.Add(v);
+    }
+    // also support repeated query keys ?key=1&key=2
+    foreach (var q in http.Query[key])
+    {
+        if (int.TryParse(q, out var v)) vals.Add(v);
+    }
+    return vals.Distinct().ToList();
+}
 
 static DataTable ToIntList(IEnumerable<int>? ids)
 {
