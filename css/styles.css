@@ -12,6 +12,8 @@ textarea, input, select { width:100%; background:#0b1220; color:#e5e7eb; border:
 .field { display:block; }
 .field.inline { display:flex; align-items:center; gap:8px; }
 .field.inline label { margin:0; }
+.inline-controls { display:flex; align-items:end; gap:8px; }
+.inline-controls input, .inline-controls select { width:auto; }
 .panel .btns button { white-space:nowrap; }
 .btns { display:flex; gap:8px; flex-wrap:wrap; }
 button { background:#1f2937; color:#e5e7eb; border:1px solid #374151; padding:10px 12px; border-radius:10px; cursor:pointer; font-size:13px; }
@@ -44,3 +46,10 @@ button:hover { background:#2a3648; }
 .sidepanel.left .handle { right:-14px; }
 .sidepanel.right .handle { left:-14px; }
 .sidepanel .handle:hover { background:#122036; }
+
+/* Legends list: tidy vertical with scroll */
+#legend-types { display:flex; flex-direction:column; gap:6px; max-height:260px; overflow-y:auto; padding-right:4px; }
+#legend-types .legend-item { display:grid; grid-template-columns: 18px 14px 1fr; gap:8px; align-items:center; }
+#legend-types .legend-item input[type="checkbox"] { margin:0; }
+#legend-types .legend-swatch { display:inline-block; width:12px; height:12px; border-radius:3px; border:1px solid #243044; }
+#legend-types .legend-label { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }

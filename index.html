@@ -102,7 +102,6 @@
               <div class="field">
                 <label>Max Edges / Node</label>
                 <input id="fanoutLimit" type="number" min="1" step="1" value="200" style="width:80px" />
-                <button id="btnApplyFanout" type="button">Apply</button>
               </div>
               <div class="field">
                 <label>Label Threshold</label>
@@ -115,6 +114,7 @@
               <button id="btnExportPng" type="button">Export PNG</button>
             </div>
           </div>
+
 
           <div>
             <label>Seeds (Frontier)</label>
@@ -159,6 +159,11 @@
       <div id="details-panel">
         <label>Selection</label>
         <div id="node-details" class="hint">No node selected.</div>
+      </div>
+
+      <div style="margin-top:10px">
+        <label>Legends (Type)</label>
+        <div id="legend-types"></div>
       </div>
 
       <div style="margin-top:10px">
@@ -327,10 +332,12 @@
         const id = nodeId(col, val);
         if (!cy.getElementById(id).empty()) return cy.getElementById(id);
         const label = text || String(val);
-        return cy.add({
+        const ele = cy.add({
           group: "nodes",
           data: { id, col, val, label, color, type },
         });
+        try { ensureLegendForType(type, color); } catch {}
+        return ele;
       }
 
       // Collapse reverse edges into one "bidirectional" edge in the UI
@@ -549,6 +556,16 @@
       document.getElementById("run").addEventListener("click", async () => {
         const payload = buildPayloadFromUI();
         try {
+          // Use a fresh, local exclude set for this run so previous runs don't block new seeds
+          let localExclude = [];
+          const localExcludeSet = new Set();
+          const addExcludeLocal = (viewId, col, val) => {
+            const key = `${viewId}|${col}|${String(val)}`;
+            if (localExcludeSet.has(key)) return;
+            localExcludeSet.add(key);
+            localExclude.push({ ViewID: viewId, col, val: String(val) });
+          };
+
           let steps = Math.max(1, parseInt(String(payload.depth || 1), 10));
           let next = seeds.slice();
           if (!next.length && cy.nodes().length) {
@@ -562,7 +579,7 @@
             if (!next || next.length === 0) break;
             payload.frontier = next.slice();
             payload.depth = 1; // advance exactly one step per call
-            payload.perViewExclude = perViewExclude;
+            payload.perViewExclude = localExclude;
             const { edges, nextFrontier } = await apiStep(payload);
             renderEdges(edges || []);
             setEdgeStyleForSize();
@@ -572,7 +589,7 @@
 
             if (Array.isArray(payload.viewIds)) {
               for (const v of payload.viewIds) {
-                for (const f of currentFrontier) addExclude(v, f.col, f.val);
+                for (const f of currentFrontier) addExcludeLocal(v, f.col, f.val);
               }
             }
 
@@ -590,22 +607,57 @@
         isExpanding = true;
         const payload = buildPayloadFromUI();
         try {
+          // Use a fresh, local exclude set for this expansion run
+          let localExclude = [];
+          const localExcludeSet = new Set();
+          const addExcludeLocal = (viewId, col, val) => {
+            const key = `${viewId}|${col}|${String(val)}`;
+            if (localExcludeSet.has(key)) return;
+            localExcludeSet.add(key);
+            localExclude.push({ ViewID: viewId, col, val: String(val) });
+          };
+
           let steps = Math.max(1, parseInt(String(payload.depth || 1), 10));
           let next = [{ col: n.col, val: String(n.val) }];
           for (let d = 0; d < steps; d++) {
             if (!next || next.length === 0) break;
             payload.frontier = next.slice();
             payload.depth = 1; // advance exactly one step per call
-            payload.perViewExclude = perViewExclude;
+            payload.perViewExclude = localExclude;
             const { edges, nextFrontier } = await apiStep(payload);
-            renderEdges(edges || []);
-            setEdgeStyleForSize();
-            adjustLabels();
+            // Only refresh if there are truly new edges/nodes.
+            if (edges && edges.length) {
+              let hasNew = false;
+              try {
+                for (const row of edges) {
+                  const id = edgeId(row.from_col, row.from_val, row.to_col, row.to_val);
+                  const revId = edgeId(row.to_col, row.to_val, row.from_col, row.from_val);
+                  const fwdEmpty = cy.getElementById(id).empty();
+                  const revEmpty = cy.getElementById(revId).empty();
+                  if (fwdEmpty && revEmpty) { hasNew = true; break; }
+                }
+                // Upgrade reverse edges to bidirectional without relayout
+                if (!hasNew) {
+                  for (const row of edges) {
+                    const revId = edgeId(row.to_col, row.to_val, row.from_col, row.from_val);
+                    const rev = cy.getElementById(revId);
+                    if (!rev.empty()) { try { rev.data('bidirectional', true); } catch {} }
+                  }
+                  try { cy.style().update(); } catch {}
+                }
+              } catch {}
+
+              if (hasNew) {
+                renderEdges(edges);
+                setEdgeStyleForSize();
+                adjustLabels();
+              }
+            }
 
             currentFrontier = (nextFrontier || []).slice();
             if (Array.isArray(payload.viewIds)) {
               for (const v of payload.viewIds) {
-                for (const f of currentFrontier) addExclude(v, f.col, f.val);
+                for (const f of currentFrontier) addExcludeLocal(v, f.col, f.val);
               }
             }
             next = currentFrontier;
@@ -742,6 +794,7 @@
       let hubDeg = 6;
       let currentFanoutLimit = null; // number | null
       let stayOnPath = false;
+      const typeVisibility = new Map();
 
       function recomputeHubsLeaves() {
         cy.nodes().removeClass('hub leaf');
@@ -750,6 +803,45 @@
           if (deg === 1) n.addClass('leaf');
           if (deg >= hubDeg) n.addClass('hub');
           if (hideLeaves && deg === 1) n.style('display', 'none'); else n.style('display', 'element');
+        });
+      }
+
+      function ensureLegendForType(type, color) {
+        if (type == null) return;
+        const key = String(type).trim();
+        if (!key) return;
+        if (typeVisibility.has(key)) return;
+        typeVisibility.set(key, true);
+        const cont = document.getElementById('legend-types');
+        if (!cont) return;
+        const wrap = document.createElement('div');
+        wrap.className = 'legend-item';
+        const cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.checked = true;
+        cb.addEventListener('change', ()=>{
+          typeVisibility.set(key, !!cb.checked);
+          applyTypeFilter();
+          updateEdgeVisibility();
+        });
+        const sw = document.createElement('span');
+        sw.className = 'legend-swatch';
+        if (color) sw.style.background = color;
+        else sw.style.background = '#64748b';
+        const lbl = document.createElement('span');
+        lbl.className = 'legend-label';
+        lbl.textContent = key;
+        wrap.appendChild(cb);
+        wrap.appendChild(sw);
+        wrap.appendChild(lbl);
+        cont.appendChild(wrap);
+      }
+
+      function applyTypeFilter() {
+        cy.nodes().forEach(n => {
+          const t = (n.data('type') ?? '').toString().trim();
+          const allowed = !t || !typeVisibility.has(t) || typeVisibility.get(t) === true;
+          n.style('display', allowed ? 'element' : 'none');
         });
       }
 
@@ -779,12 +871,19 @@
           const vc = e.data('views_count');
           if (show && vc != null && Number(vc) < minSupport) show = false;
           if (show && e.scratch('_hideFanout')) show = false;
+          // Hide edges whose endpoints are hidden by type filter
+          if (show) {
+            try {
+              if (!e.source().visible() || !e.target().visible()) show = false;
+            } catch {}
+          }
           e.style('display', show ? 'element' : 'none');
         });
       }
 
       function reapplyFilters() {
         applyFanoutLimitScratch();
+        applyTypeFilter();
         recomputeHubsLeaves();
         updateEdgeVisibility();
         setEdgeStyleForSize();
@@ -807,10 +906,18 @@
         labelHideThreshold = Math.max(0, parseInt(e.target.value||'1500',10));
         adjustLabels();
       });
-      document.getElementById('btnApplyFanout').addEventListener('click', ()=>{
-        const v = parseInt(document.getElementById('fanoutLimit').value||'', 10);
+      // Fanout limit applies live (debounced) and on change
+      const fanoutInput = document.getElementById('fanoutLimit');
+      function applyFanoutFromInput(){
+        const v = parseInt(fanoutInput.value||'', 10);
         currentFanoutLimit = isNaN(v) ? null : Math.max(1, v);
         reapplyFilters();
+      }
+      let fanoutTimer = null;
+      fanoutInput.addEventListener('change', applyFanoutFromInput);
+      fanoutInput.addEventListener('input', ()=>{
+        clearTimeout(fanoutTimer);
+        fanoutTimer = setTimeout(applyFanoutFromInput, 300);
       });
       document.getElementById('stayOnPath').addEventListener('change', (e)=>{
         stayOnPath = !!e.target.checked;
