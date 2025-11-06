@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>db-data-explorer - Graph Viewer</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!-- Cytoscape (vendored) -->
+    <script src="libraries/cytoscape/cytoscape.min.js"></script>
+    <link rel="stylesheet" href="css/styles.css" />
+    <style>
+      /* Small inline tweaks for list buttons */
+      #seed-list button {
+        font-size: 11px;
+        padding: 2px 6px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="sidepanel left open" id="left-panel">
+        <div class="handle" id="left-toggle">||</div>
+        <h1>db-data-explorer</h1>
+
+        <div>
+          <label>Filters</label>
+          <div class="row">
+            <div>
+              <label>View IDs</label>
+              <div class="multiselect" id="view-select">
+                <button id="view-dropdown-btn" type="button">
+                  Selected: 1,2
+                </button>
+                <div class="multiselect-menu" id="view-dropdown"></div>
+              </div>
+            </div>
+            <div>
+              <label>Depth</label>
+              <input id="depth" type="number" min="1" step="1" value="1" />
+            </div>
+          </div>
+          <div class="row">
+            <div>
+              <label>Max Fanout (optional)</label>
+              <input
+                id="maxFanout"
+                type="number"
+                min="1"
+                step="1"
+                value="200"
+              />
+            </div>
+            <div></div>
+          </div>
+          <div class="row">
+            <div>
+              <label>Language</label>
+              <select id="lang">
+                <option value="en" selected>English</option>
+                <option value="ar">Arabic</option>
+              </select>
+            </div>
+            <div>
+              <label>Layout</label>
+              <select id="layout">
+                <option value="cose" selected>cose</option>
+                <option value="breadthfirst">breadthfirst</option>
+                <option value="concentric">concentric</option>
+                <option value="grid">grid</option>
+              </select>
+            </div>
+            <div style="display:flex; align-items:flex-end; gap:6px;">
+              <label style="margin:0 6px 0 12px;">Animate</label>
+              <input id="animate" type="checkbox" checked />
+            </div>
+          </div>
+
+          <div style="margin-top:10px">
+            <label>Options</label>
+            <div class="row-3">
+              <div class="field">
+                <label>Min Edge Support</label>
+                <input id="minSupport" type="range" min="1" max="6" value="1" />
+              </div>
+              <div class="field inline">
+                <label>Hide Leaves</label>
+                <input id="hideLeaves" type="checkbox" />
+              </div>
+              <div class="field">
+                <label>Highlight Hubs (deg >=)</label>
+                <input id="hubDeg" type="number" min="2" step="1" value="6" style="width:70px" />
+              </div>
+            </div>
+            
+            <div class="row-3" style="margin-top:6px">
+              <div class="field">
+                <label>Max Edges / Node</label>
+                <input id="fanoutLimit" type="number" min="1" step="1" value="200" style="width:80px" />
+              </div>
+              <div class="field">
+                <label>Label Threshold</label>
+                <input id="labelThresh" type="number" min="0" step="100" value="1500" style="width:80px" />
+              </div>
+              <div class="field"></div>
+            </div>
+            <div class="btns" style="margin-top:8px">
+              <button id="btnTidy" type="button">Tidy</button>
+              <button id="btnExportPng" type="button">Export PNG</button>
+            </div>
+          </div>
+
+
+          <div>
+            <label>Seeds (Frontier)</label>
+            <div class="row">
+              <select id="seed-col-select">
+                <option value="">--</option>
+              </select>
+              <div style="display:flex; gap:6px; align-items:end;">
+                <div style="flex:1">
+                  <input id="seed-val" type="text" placeholder="Value (e.g. 1)" list="seedVals-list" />
+                  <datalist id="seedVals-list"></datalist>
+                </div>
+                <button id="add-seed" type="button">Add</button>
+              </div>
+            </div>
+            <div class="btns" style="margin-top: 8px">
+              <button id="add-seed-selected" type="button">Add From Selection</button>
+              <button id="clear-seeds" type="button">Clear Seeds</button>
+            </div>
+            <ul id="seed-list" style="list-style: none; padding-left: 0; margin-top: 8px"></ul>
+          </div>
+
+          <div class="btns">
+            <button id="run">Run Step</button>
+            <button id="clear">Clear Graph</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="cy"></div>
+    </div>
+
+    <div class="sidepanel right" id="right-panel">
+      <div class="handle" id="right-toggle">||</div>
+      <h1>Details & Tools</h1>
+      <div id="details-panel">
+        <label>Selection</label>
+        <div id="node-details" class="hint">No node selected.</div>
+      </div>
+      <div style="margin-top:10px">
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
+          <label>Legends (Type)</label>
+          <label class="hint" style="display:flex; align-items:center; gap:6px;">
+            <input id="legend-select-all" type="checkbox" checked />
+            Select all
+          </label>
+        </div>
+        <div id="legend-types"></div>
+      </div>
+
+      <div style="margin-top:10px">
+        <label>Search</label>
+        <input id="searchTerm" type="text" placeholder="label / col / val" style="width:160px" />
+        <div class="btns" style="margin-top:6px">
+          <button id="btnSearchAdd" type="button">Add</button>
+          <button id="btnSearchClear" type="button">Clear</button>
+        </div>
+        <ul id="search-terms" style="list-style:none; padding-left:0; margin-top:6px"></ul>
+      </div>
+
+     
+    </div>
+
+            <script type="module" src="graphjs/main.js"></script>
+  </body>
+</html>
+
