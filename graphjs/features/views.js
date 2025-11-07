@@ -8,9 +8,31 @@ const container = qs('#view-select');
 
 export function getSelectedViewIds() { return Array.from(state.viewSelected).sort((a,b)=>a-b); }
 
+function viewLabelFor(v, lang) {
+  return lang === 'ar'
+    ? (v.descriptionAr || v.nameAr || `View ${v.id}`)
+    : (v.descriptionEn || v.nameEn || `View ${v.id}`);
+}
+
 function updateButton() {
-  const list = Array.from(state.viewSelected).sort((a,b)=>a-b);
-  btn.textContent = list.length ? `Selected: ${list.join(',')}` : 'Select views';
+  const lang = qs('#lang').value || 'en';
+  const ids = Array.from(state.viewSelected).sort((a,b)=>a-b);
+  const names = ids.map(id => {
+    const v = state.availableViews.find(x => x.id === id);
+    return v ? viewLabelFor(v, lang) : String(id);
+  });
+  if (!ids.length) { btn.textContent = 'Select views'; return; }
+  btn.textContent = '';
+  // Prefix then each name on its own line
+  btn.append('Selected: ');
+  names.forEach((name, idx) => {
+    if (idx === 0) {
+      btn.append(name);
+    } else {
+      btn.append(document.createElement('br'));
+      btn.append(name);
+    }
+  });
 }
 
 function renderMenu() {
@@ -47,5 +69,9 @@ export async function initViews() {
 
   btn.addEventListener('click', () => { container.classList.toggle('open'); if (container.classList.contains('open')) renderMenu(); });
   document.addEventListener('click', (e) => { if (!container.contains(e.target)) container.classList.remove('open'); });
-  qs('#lang').addEventListener('change', () => { if (container.classList.contains('open')) renderMenu(); document.dispatchEvent(new CustomEvent('views:changed')); });
+  qs('#lang').addEventListener('change', () => {
+    if (container.classList.contains('open')) renderMenu();
+    updateButton();
+    document.dispatchEvent(new CustomEvent('views:changed'));
+  });
 }

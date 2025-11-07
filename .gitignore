@@ -12,3 +12,5 @@ node_modules/
 *.log
 dist/
 db/import-log.txt
+server-dotnet/bin/
+server-dotnet/obj/

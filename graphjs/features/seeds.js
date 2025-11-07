@@ -14,7 +14,7 @@ function renderSeedList() {
     const colName = s.colLabel || s.col;
     li.textContent = `${colName} = ${disp}`;
     const btn = document.createElement('button');
-    btn.textContent = 'Remove'; btn.style.marginLeft = '8px';
+    btn.textContent = 'x'; btn.style.marginLeft = '8px';
     btn.addEventListener('click', () => { state.seeds.splice(idx, 1); renderSeedList(); });
     li.appendChild(btn);
     ul.appendChild(li);
@@ -112,8 +112,7 @@ export function initSeedsUI() {
     if (!sel || !sel.length) { alert('Select node(s) in the graph to add.'); return; }
     sel.forEach(n => {
       const col = n.data('col'); const val = String(n.data('val'));
-      const colSel = qs('#seed-col-select');
-      const colLabel = (colSel && colSel.selectedIndex >= 0) ? (colSel.options[colSel.selectedIndex].textContent || col) : col;
+      const colLabel = col; // derive purely from selected node
       const label = (n.data('label') ?? val).toString();
       if (col && val) {
         const key = `${col}|${val}`;

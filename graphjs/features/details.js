@@ -26,10 +26,6 @@ export function renderNodeDetails(n) {
       el('div', { style: { marginTop:'6px' } }, el('span', { class:'tag' }, 'Degree'), ` ${deg} (in ${indeg} | out ${outdeg})`)
     ),
     el('div', { class:'btns', style:{ marginTop:'8px', display:'flex', gap:'8px', flexWrap:'wrap' } },
-      el('button', { id:'copy-node-json', type:'button', onclick: async () => {
-        const payload = { col: n.col, val: String(n.val), type: type || undefined, label, color, degree: { total: deg, in: indeg, out: outdeg } };
-        try { await navigator.clipboard.writeText(JSON.stringify(payload, null, 2)); const b = qs('#copy-node-json'); b && (b.textContent = 'Copied', setTimeout(()=> b.textContent='Copy JSON', 1200)); } catch {}
-      }}, 'Copy JSON'),
       el('button', { id:'set-start', type:'button', onclick: () => { state.pathStartId = id; renderNodeDetails(n); } }, 'Set Start'),
       el('button', { id:'set-end', type:'button', onclick: () => { state.pathEndId = id; renderNodeDetails(n); } }, 'Set End'),
       el('button', { id:'show-path', type:'button', disabled: !(state.pathStartId && state.pathEndId), onclick: () => { showShortestPath(); } }, 'Show Shortest Path'),
