@@ -24,8 +24,38 @@ function updateLegendSelectAllState() {
 
 export function renderLegendList() {
   const cont = document.getElementById('legend-types'); if (!cont) return;
+  // Clear container on each render
   cont.innerHTML = '';
-  const keys = Array.from(state.typeVisibility.keys()).sort((a,b)=> a.localeCompare(b, undefined, { sensitivity: 'base' }));
+
+  // Remove any static master row outside the container so we can manage it dynamically
+  const existingMaster = document.getElementById('legend-select-all');
+  if (existingMaster && existingMaster.closest('#legend-types') == null) {
+    const row = existingMaster.closest('.legend-item');
+    if (row) row.remove();
+  }
+
+  const keys = Array.from(state.typeVisibility.keys())
+    .sort((a,b)=> a.localeCompare(b, undefined, { sensitivity: 'base' }));
+
+  // Create the dynamic master checkbox at the top only when we have legend items
+  if (keys.length > 0) {
+    const masterRow = document.createElement('div'); masterRow.className = 'legend-item';
+    const master = document.createElement('input'); master.type = 'checkbox'; master.id = 'legend-select-all'; master.checked = true;
+    const sw = document.createElement('span'); sw.className = 'legend-swatch';
+    const lbl = document.createElement('span'); lbl.className = 'legend-label'; lbl.textContent = 'Select all';
+    masterRow.append(master, sw, lbl);
+    cont.appendChild(masterRow);
+    master.addEventListener('change', ()=>{
+      const checked = !!master.checked;
+      Array.from(state.typeVisibility.keys()).forEach(k => state.typeVisibility.set(k, checked));
+      cont.querySelectorAll('input[type="checkbox"]').forEach(inp => { if (inp !== master) inp.checked = checked; });
+      master.indeterminate = false;
+      applyTypeFilter();
+      updateEdgeVisibility();
+    });
+  }
+
+  // Populate type legend items
   keys.forEach(key => {
     const wrap = document.createElement('div'); wrap.className = 'legend-item';
     const cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = !!state.typeVisibility.get(key);
@@ -35,6 +65,7 @@ export function renderLegendList() {
     wrap.append(cb, sw, lbl);
     cont.appendChild(wrap);
   });
+
   updateLegendSelectAllState();
 }
 
@@ -119,6 +150,7 @@ export function initFilterControls() {
   const fanoutInput = document.getElementById('fanoutLimit');
   function applyFanoutFromInput(){ const v = parseInt(fanoutInput.value||'', 10); state.currentFanoutLimit = isNaN(v) ? null : Math.max(1, v); reapplyFilters(); }
   let fanoutTimer = null; fanoutInput.addEventListener('change', applyFanoutFromInput); fanoutInput.addEventListener('input', ()=>{ clearTimeout(fanoutTimer); fanoutTimer = setTimeout(applyFanoutFromInput, 300); });
-  const master = document.getElementById('legend-select-all');
-  if (master) master.addEventListener('change', ()=>{ const checked = !!master.checked; Array.from(state.typeVisibility.keys()).forEach(k => state.typeVisibility.set(k, checked)); document.querySelectorAll('#legend-types input[type="checkbox"]').forEach(inp => { inp.checked = checked; }); master.indeterminate = false; applyTypeFilter(); updateEdgeVisibility(); });
+  // Master checkbox is managed dynamically in renderLegendList()
+  const stopExpand = document.getElementById('stopExpand');
+  if (stopExpand) stopExpand.addEventListener('change', (e)=>{ state.stopNodeExpand = !!e.target.checked; });
 }

@@ -34,7 +34,7 @@ export function renderNodeDetails(n) {
     el('div', { class:'hint', style:{ marginTop:'6px' } },
       el('span', { class:'tag' }, 'Path Start'), ' ', startText, ' ',
       el('span', { class:'tag', style:'margin-left:6px;' }, 'Path End'), ' ', endText,
-      el('label', { class:'hint', style:'margin-left:12px; display:inline-flex; align-items:center; gap:6px;' },
+      el('label', { class:'hint', style:'margin-left:12px; display:block; margin-top:6px;' },
         el('input', { type:'checkbox', id:'stayOnPathLocal', ...(state.stayOnPath ? { checked: true } : {}), onchange: (e)=>{ state.stayOnPath = !!e.target.checked; const master = document.getElementById('stayOnPath'); if (master) master.checked = state.stayOnPath; reapplyFilters(); } }),
         'Stay on Path'
       )

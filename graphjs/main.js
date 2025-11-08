@@ -5,7 +5,7 @@ import { initViews } from './features/views.js';
 import { initSeedsUI, refreshSeedColumns } from './features/seeds.js';
 import { initFilterControls, reapplyFilters } from './features/filters.js';
 import { renderNodeDetails } from './features/details.js';
-import { expandFromNode, runTraverse, clearGraph } from './features/expand.js';
+import { expandFromNode, runTraverse, clearGraph, updateGraphDataPanel } from './features/expand.js';
 import { initSearchUI, applySearchBlinkFromTerms } from './features/search.js';
 import { showShortestPath, clearShortestPath } from './features/path.js';
 import { initExportButtons } from './features/export.js';
@@ -16,8 +16,8 @@ function relayout() {
 }
 qs('#layout').addEventListener('change', relayout);
 
-// Graph selection expands and shows details
-cy.on('select', 'node', async (evt) => { const n = evt.target.data(); renderNodeDetails(n); await expandFromNode(n); });
+// Graph selection expands and shows details (unless stopped)
+cy.on('select', 'node', async (evt) => { const n = evt.target.data(); renderNodeDetails(n); if (state.stopNodeExpand) return; await expandFromNode(n); });
 cy.on('unselect', 'node', () => { if (cy.nodes(':selected').length === 0) qs('#node-details').textContent = 'No node selected.'; });
 
 // Top-level buttons
@@ -47,3 +47,4 @@ initExportButtons();
 reapplyFilters();
 relayout();
 refreshSeedColumns();
+updateGraphDataPanel();

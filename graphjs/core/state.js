@@ -31,7 +31,8 @@ export const state = {
   pathTimers: [],
   pathBlinkInterval: null,
   stayOnPath: false,
-
+  
   // misc
   isExpanding: false,
+  stopNodeExpand: false,
 };

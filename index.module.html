@@ -21,46 +21,116 @@
         <div class="handle" id="left-toggle">||</div>
         <h1>Graph DB Data Explorer</h1>
         <div>
-          
           <div class="row">
-            <div>
-              <label>Depth</label>
-              <select id="depth">
-                <option value="1" selected>1</option>
-                <option value="2">2</option>
-                <option value="3">3</option>
-                <option value="4">4</option>
-                <option value="5">5</option>
-              </select>
-            </div>
-            <div>
-              <label>Max Connections per Node</label>
-              <input id="maxFanout" type="number" min="1" step="1" value="200" style="width: 155px" />
+            <div style="grid-column: 1 / -1">
+              <label>Data Source</label>
+              <div class="multiselect" id="view-select">
+                <button id="view-dropdown-btn" type="button"></button>
+                <div class="multiselect-menu" id="view-dropdown"></div>
+              </div>
             </div>
           </div>
+          <div class="row">
+            <div style="grid-column: 1 / -1">
+              <label>Entity</label>
+              <select id="seed-col-select">
+                <option value="">--</option>
+              </select>
+            </div>
+          </div>
+          <div class="row">
+            <div>
+              <label>Entity Value</label>
+              <div>
+                <input id="seed-val" type="text" placeholder="Value (e.g. 1)" list="seedVals-list" />
+                <datalist id="seedVals-list"></datalist>
+              </div>
+            </div>
+          </div>
+          <div class="btns" style="margin-top: 8px">
+            <button id="add-seed" type="button">Add</button>
+            <button id="clear-seeds" type="button">Clear</button>
+            <button id="add-seed-selected" type="button" style="display: none">Add From Selection</button>
+            <button id="run">Show</button>
+          </div>
+          <ul id="seed-list" style="list-style: none; padding-left: 0; margin-top: 8px"></ul>
+          <div class="btns"></div>
+        </div>
+        <div id="graph-data-panel">
+          <div class="btns">
+            <button id="btnTidy" type="button">Tidy</button>
+            <button id="clear">Clear Graph</button>
+            <button id="btnExportPng" type="button">Export PNG</button>
+          </div>
+          <div id="details-panel">
+            <label>Selection</label>
+            <div id="node-details" class="hint">No node selected.</div>
+          </div>
+          <div style="margin-top: 10px">
+            <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px">
+              <label>Legends (Type)</label>
+            </div>
+            <div id="legend-types"></div>
+          </div>
+          <div style="margin-top: 10px">
+            <label>Search</label>
+            <input id="searchTerm" type="text" placeholder="label / col / val" style="width: 160px" />
+            <div class="btns" style="margin-top: 6px">
+              <button id="btnSearchAdd" type="button">Add</button>
+              <button id="btnSearchClear" type="button">Clear</button>
+            </div>
+            <ul id="search-terms" style="list-style: none; padding-left: 0; margin-top: 6px"></ul>
+          </div>
+        </div>
+      </div>
 
-          <div class="row">
-            <div>
-              <label>Language</label>
-              <select id="lang">
-                <option value="en" selected>English</option>
-                <option value="ar">Arabic</option>
-              </select>
-            </div>
-            <div>
-              <label>Layout</label>
-              <select id="layout">
-                <option value="cose" selected>cose</option>
-                <option value="breadthfirst">breadthfirst</option>
-                <option value="concentric">concentric</option>
-                <option value="grid">grid</option>
-              </select>
-            </div>
-            <div class="field inline">
-              <label>Animate</label>
-              <input id="animate" type="checkbox" checked />
-            </div>
+      <div id="cy"></div>
+    </div>
+
+    <div class="sidepanel right" id="right-panel">
+      <div class="handle" id="right-toggle">||</div>
+      <h1>Options</h1>
+
+      <div>
+        <div class="row">
+          <div>
+            <label>Depth</label>
+            <select id="depth">
+              <option value="1" selected>1</option>
+              <option value="2">2</option>
+              <option value="3">3</option>
+              <option value="4">4</option>
+              <option value="5">5</option>
+            </select>
           </div>
+          <div>
+            <label>Max Connections per Node</label>
+            <input id="maxFanout" type="number" min="1" step="1" value="200" style="width: 155px" />
+          </div>
+        </div>
+
+        <div class="row">
+          <div>
+            <label>Language</label>
+            <select id="lang">
+              <option value="en" selected>English</option>
+              <option value="ar">Arabic</option>
+            </select>
+          </div>
+          <div>
+            <label>Layout</label>
+            <select id="layout">
+              <option value="cose" selected>cose</option>
+              <option value="breadthfirst">breadthfirst</option>
+              <option value="concentric">concentric</option>
+              <option value="grid">grid</option>
+            </select>
+          </div>
+          <div class="field inline">
+            <label>Animate</label>
+            <input id="animate" type="checkbox" checked />
+          </div>
+        </div>
           <div style="margin-top: 10px">
             <div class="row">
               <div>
@@ -89,85 +159,14 @@
                 <label>Label Threshold</label>
                 <input id="labelThresh" type="number" min="0" step="100" value="1500" style="width: 80px" />
               </div>
-               
             </div>
-          </div>
-
-          <div>
-            <div class="row">
-            <div style="grid-column: 1 / -1">
-              <label>Data Source</label>
-              <div class="multiselect" id="view-select">
-                <button id="view-dropdown-btn" type="button"></button>
-                <div class="multiselect-menu" id="view-dropdown"></div>
+            <div class="row" style="margin-top: 6px">
+              <div class="field inline">
+                <label>Stop Node Expand</label>
+                <input id="stopExpand" type="checkbox" />
               </div>
             </div>
           </div>
-            <div class="row">
-              <div style="grid-column: 1 / -1">
-                <label>Entity</label>
-                <select id="seed-col-select">
-                  <option value="">--</option>
-                </select>
-              </div>
-            </div>
-            <div class="row">
-              <div>
-                <label>Entity Value</label>
-                <div>
-                  <input id="seed-val" type="text" placeholder="Value (e.g. 1)" list="seedVals-list" />
-                  <datalist id="seedVals-list"></datalist>
-                </div>
-              </div>
-            </div>
-            <div class="btns" style="margin-top: 8px">
-              <button id="add-seed" type="button">Add</button>
-              <button id="add-seed-selected" type="button">Add From Selection</button>
-              <button id="clear-seeds" type="button">Clear Seeds</button>
-            </div>
-            <ul id="seed-list" style="list-style: none; padding-left: 0; margin-top: 8px"></ul>
-          </div>
-
-          <div class="btns">
-            <button id="run">Show</button>
-          </div>
-          <div class="btns">
-            <button id="btnTidy" type="button">Tidy</button>
-            <button id="clear">Clear Graph</button>
-            <button id="btnExportPng" type="button">Export PNG</button>
-          </div>
-        </div>
-      </div>
-
-      <div id="cy"></div>
-    </div>
-
-    <div class="sidepanel right" id="right-panel">
-      <div class="handle" id="right-toggle">||</div>
-      <h1>Details & Tools</h1>
-      <div id="details-panel">
-        <label>Selection</label>
-        <div id="node-details" class="hint">No node selected.</div>
-      </div>
-      <div style="margin-top: 10px">
-        <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px">
-          <label>Legends (Type)</label>
-          <label class="hint" style="display: flex; align-items: center; gap: 6px">
-            <input id="legend-select-all" type="checkbox" checked />
-            Select all
-          </label>
-        </div>
-        <div id="legend-types"></div>
-      </div>
-
-      <div style="margin-top: 10px">
-        <label>Search</label>
-        <input id="searchTerm" type="text" placeholder="label / col / val" style="width: 160px" />
-        <div class="btns" style="margin-top: 6px">
-          <button id="btnSearchAdd" type="button">Add</button>
-          <button id="btnSearchClear" type="button">Clear</button>
-        </div>
-        <ul id="search-terms" style="list-style: none; padding-left: 0; margin-top: 6px"></ul>
       </div>
     </div>
 

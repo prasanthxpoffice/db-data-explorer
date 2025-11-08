@@ -625,6 +625,7 @@
       cy.on("select", "node", async (evt) => {
         const n = evt.target.data();
         renderNodeDetails(n);
+        if (stopExpand) return;
         await expandFromNode(n);
       });
 
@@ -758,6 +759,7 @@
       let minSupport = 1;
       let hideLeaves = false;
       let hubDeg = 6;
+      let stopExpand = false;
       let currentFanoutLimit = null; // number | null
       let stayOnPath = false;
       const typeVisibility = new Map();
@@ -927,6 +929,10 @@
       if (stayMaster) stayMaster.addEventListener('change', (e)=>{
         stayOnPath = !!e.target.checked;
         reapplyFilters();
+      });
+      const stopExpandCb = document.getElementById('stopExpand');
+      if (stopExpandCb) stopExpandCb.addEventListener('change', (e)=>{
+        stopExpand = !!e.target.checked;
       });
       document.getElementById('btnTidy').addEventListener('click', ()=>{
         const name = document.getElementById('layout').value;
@@ -1113,7 +1119,7 @@
             pathHint.innerHTML = `<span class="tag">Path Start</span> ${startText} <span class="tag" style="margin-left:6px;">Path End</span> ${endText}`;
             const toggleLbl = document.createElement('label');
             toggleLbl.className = 'hint';
-            toggleLbl.style.cssText = 'margin-left:12px; display:inline-flex; align-items:center; gap:6px;';
+            toggleLbl.style.cssText = 'margin-left:12px; display:block; margin-top:6px;';
             const cb = document.createElement('input');
             cb.type = 'checkbox';
             cb.id = 'stayOnPathLocal';

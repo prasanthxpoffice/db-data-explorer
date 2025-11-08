@@ -20,10 +20,20 @@ function relayout() {
   setTimeout(() => { cy.layout({ name, animate: (document.getElementById('animate')?.checked ?? true), fit: true, padding: 20 }).run(); }, 50);
 }
 
+export function updateGraphDataPanel() {
+  try {
+    const panel = document.getElementById('graph-data-panel');
+    if (!panel) return;
+    const hasContent = cy.nodes().length > 0 && cy.edges().length > 0;
+    panel.style.display = hasContent ? '' : 'none';
+  } catch {}
+}
+
 export function renderEdges(rows) {
   cy.batch(() => { rows.forEach(ensureEdge); });
   relayout();
   try { refreshSeedColumns(); } catch {}
+  updateGraphDataPanel();
 }
 
 export async function expandFromNode(n) {
@@ -99,4 +109,5 @@ export async function runTraverse() {
 export function clearGraph() {
   cy.elements().remove(); state.currentFrontier = []; state.perViewExclude = []; state.perViewExcludeSet = new Set(); state.seeds = [];
   setEdgeStyleForSize(); adjustLabels();
+  updateGraphDataPanel();
 }
