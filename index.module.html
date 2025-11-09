@@ -54,7 +54,13 @@
             <div>
               <label data-i18n="entity_value">Entity Value</label>
               <div>
-                <input id="seed-val" type="text" data-i18n-attr="placeholder:value_placeholder" placeholder="Value (e.g. 1)" list="seedVals-list" />
+                <input
+                  id="seed-val"
+                  type="text"
+                  data-i18n-attr="placeholder:value_placeholder"
+                  placeholder="Value (e.g. 1)"
+                  list="seedVals-list"
+                />
                 <datalist id="seedVals-list"></datalist>
               </div>
             </div>
@@ -62,7 +68,9 @@
           <div class="btns" style="margin-top: 8px">
             <button id="add-seed" type="button" data-i18n="add">Add</button>
             <button id="clear-seeds" type="button" data-i18n="clear">Clear</button>
-            <button id="add-seed-selected" type="button" style="display: none" data-i18n="add_from_selection">Add From Selection</button>
+            <button id="add-seed-selected" type="button" style="display: none" data-i18n="add_from_selection">
+              Add From Selection
+            </button>
             <button id="run" data-i18n="show">Show</button>
           </div>
           <ul id="seed-list" style="list-style: none; padding-left: 0; margin-top: 8px"></ul>
@@ -86,7 +94,13 @@
           </div>
           <div style="margin-top: 10px">
             <label data-i18n="search">Search</label>
-            <input id="searchTerm" type="text" data-i18n-attr="placeholder:search_placeholder" placeholder="label / col / val" style="width: 160px" />
+            <input
+              id="searchTerm"
+              type="text"
+              data-i18n-attr="placeholder:search_placeholder"
+              placeholder="label / col / val"
+              style="width: 160px"
+            />
             <div class="btns" style="margin-top: 6px">
               <button id="btnSearchAdd" type="button" data-i18n="add">Add</button>
               <button id="btnSearchClear" type="button" data-i18n="clear">Clear</button>
@@ -121,64 +135,62 @@
           </div>
         </div>
 
-          <div class="row-3">
-            <div>
+        <div class="row-3">
+          <div>
             <label data-i18n="layout">Layout</label>
-              <select id="layout">
-                <option value="cose" selected>cose</option>
-                <option value="breadthfirst">breadthfirst</option>
-                <option value="concentric">concentric</option>
-                <option value="grid">grid</option>
-              </select>
-            </div>
-            <div>
-              <label>Theme</label>
-              <select id="theme">
-                <option value="dark" selected>Dark</option>
-                <option value="light">Light</option>
-              </select>
+            <select id="layout">
+              <option value="cose" selected>cose</option>
+              <option value="breadthfirst">breadthfirst</option>
+              <option value="concentric">concentric</option>
+              <option value="grid">grid</option>
+            </select>
+          </div>
+          <div>
+            <label data-i18n="theme">Theme</label>
+            <select id="theme">
+              <option value="dark" selected data-i18n="dark">Dark</option>
+              <option value="light" data-i18n="light">Light</option>
+            </select>
+          </div>
+          <div class="field inline">
+            <label data-i18n="animate">Animate</label>
+            <input id="animate" type="checkbox" checked />
+          </div>
+        </div>
+        <div style="margin-top: 10px">
+          <div class="row">
+            <div style="display: none">
+              <label data-i18n="min_edge_support">Min Edge Support</label>
+              <input id="minSupport" type="range" min="1" max="6" value="1" style="width: 154px" />
             </div>
             <div class="field inline">
-            <label data-i18n="animate">Animate</label>
-              <input id="animate" type="checkbox" checked />
+              <label data-i18n="stop_node_expand">Stop Node Expand</label>
+              <input id="stopExpand" type="checkbox" />
+            </div>
+            <div class="field inline">
+              <label data-i18n="hide_leaves">Hide Leaves</label>
+              <input id="hideLeaves" type="checkbox" />
             </div>
           </div>
-          <div style="margin-top: 10px">
-            <div class="row">
-              <div>
-              <label data-i18n="min_edge_support">Min Edge Support</label>
-                <input id="minSupport" type="range" min="1" max="6" value="1" style="width: 154px" />
-              </div>
-              <div class="field inline">
-              <label data-i18n="hide_leaves">Hide Leaves</label>
-                <input id="hideLeaves" type="checkbox" />
-              </div>
-            </div>
-            <div class="row-3" style="margin-top: 6px">
-              <div class="field">
+          <div class="row-3" style="margin-top: 6px">
+            <div class="field">
               <label>
                 <span data-i18n="highlight_hubs">Highlight Hubs</span>
                 <br />
                 <span data-i18n="hubs_deg_ge">(deg >=)</span>
               </label>
-                <input id="hubDeg" type="number" min="2" step="1" value="6" style="width: 70px" />
-              </div>
-              <div class="field">
-              <label data-i18n="max_edges_per_node">Max Edges / Node</label>
-                <input id="fanoutLimit" type="number" min="1" step="1" value="200" style="width: 80px" />
-              </div>
-              <div class="field">
-              <label data-i18n="label_threshold">Label Threshold</label>
-                <input id="labelThresh" type="number" min="0" step="100" value="1500" style="width: 80px" />
-              </div>
+              <input id="hubDeg" type="number" min="2" step="1" value="6" style="width: 70px" />
             </div>
-            <div class="row" style="margin-top: 6px">
-              <div class="field inline">
-                <label data-i18n="stop_node_expand">Stop Node Expand</label>
-                <input id="stopExpand" type="checkbox" />
-              </div>
+            <div class="field">
+              <label data-i18n="max_edges_per_node">Max Edges / Node</label>
+              <input id="fanoutLimit" type="number" min="1" step="1" value="200" style="width: 80px" />
+            </div>
+            <div class="field">
+              <label data-i18n="label_threshold">Label Threshold</label>
+              <input id="labelThresh" type="number" min="0" step="100" value="1500" style="width: 80px" />
             </div>
           </div>
+        </div>
       </div>
     </div>
 

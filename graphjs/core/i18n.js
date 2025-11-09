@@ -21,6 +21,9 @@ export const i18n = {
       max_conn: 'Max Connections per Node',
       language: 'Language',
       layout: 'Layout',
+      theme: 'Theme',
+      dark: 'Dark',
+      light: 'Light',
       animate: 'Animate',
       min_edge_support: 'Min Edge Support',
       hide_leaves: 'Hide Leaves',
@@ -69,6 +72,9 @@ export const i18n = {
       max_conn: 'أقصى اتصالات لكل عقدة',
       language: 'اللغة',
       layout: 'التخطيط',
+      theme: 'السِمة',
+      dark: 'داكن',
+      light: 'فاتح',
       animate: 'تحريك',
       min_edge_support: 'أدنى دعم للحافة',
       hide_leaves: 'إخفاء الأوراق',
@@ -121,4 +127,3 @@ export const i18n = {
     });
   }
 };
-
