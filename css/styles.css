@@ -1,6 +1,6 @@
-:root { --bg:#0f172a; --panel:#111827; --ink:#e5e7eb; --muted:#9ca3af; }
+:root { --bg:#0f172a; --panel:#111827; --ink:#e5e7eb; --muted:#9ca3af; --header-h:72px; }
 html, body { height:100%; margin:0; background:var(--bg); color:var(--ink); font-family:Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
-.wrap { display:grid; grid-template-columns: 1fr; height:100%; gap:12px; padding:12px; box-sizing:border-box; }
+.wrap { display:grid; grid-template-columns: 1fr; height:100%; gap:12px; padding:12px; padding-top: calc(var(--header-h) + 24px); box-sizing:border-box; }
 .panel { background:var(--panel); border:1px solid #1f2937; border-radius:14px; padding:14px; display:flex; flex-direction:column; gap:12px; }
 h1 { font-size:18px; margin:0 0 4px 0; color:#f9fafb; }
 label { display:block; font-size:12px; color:var(--muted); margin-bottom:6px; }
@@ -40,8 +40,8 @@ button:hover { background:#2a3648; }
 .multiselect-menu input[type="checkbox"] { accent-color:#3b82f6; width:14px; height:14px; margin:2px 0 0 0; display:block; }
 .multiselect-menu label span { white-space:normal; overflow-wrap:anywhere; word-break:break-word; }
 
-/* Sliding side panels */
-.sidepanel { position: fixed; top:12px; bottom:12px; width:360px; background:var(--panel); border:1px solid #1f2937; border-radius:14px; padding:14px; display:flex; flex-direction:column; gap:12px; z-index:50; transition: transform 200ms ease; box-shadow: 0 8px 24px rgba(0,0,0,0.32); overflow-y:auto; overflow-x:hidden; overscroll-behavior: contain; }
+/* Sliding side panels (sit below fixed top panel) */
+.sidepanel { position: fixed; top: calc(var(--header-h) + 24px); bottom:12px; width:360px; background:var(--panel); border:1px solid #1f2937; border-radius:14px; padding:14px; display:flex; flex-direction:column; gap:12px; z-index:50; transition: transform 200ms ease; box-shadow: 0 8px 24px rgba(0,0,0,0.32); overflow-y:auto; overflow-x:hidden; overscroll-behavior: contain; }
 .sidepanel.left { left:12px; transform: translateX(calc(-100% + 28px)); }
 .sidepanel.left.open { transform: translateX(0); }
 .sidepanel.right { right:12px; transform: translateX(calc(100% - 28px)); }
@@ -51,9 +51,32 @@ button:hover { background:#2a3648; }
 .sidepanel.right .handle { left:-14px; }
 .sidepanel .handle:hover { background:#122036; }
 
+/* Swap panels in RTL: left -> right, right -> left */
+[dir='rtl'] .sidepanel.left { left:auto; right:12px; transform: translateX(calc(100% - 28px)); }
+[dir='rtl'] .sidepanel.left.open { transform: translateX(0); }
+[dir='rtl'] .sidepanel.right { right:auto; left:12px; transform: translateX(calc(-100% + 28px)); }
+[dir='rtl'] .sidepanel.right.open { transform: translateX(0); }
+[dir='rtl'] .sidepanel.left .handle { left:-14px; right:auto; }
+[dir='rtl'] .sidepanel.right .handle { right:-14px; left:auto; }
+
 /* Legends list: tidy vertical with scroll */
 #legend-types { display:flex; flex-direction:column; gap:6px; max-height:260px; overflow-y:auto; padding-right:4px; }
 #legend-types .legend-item { display:grid; grid-template-columns: 18px 14px 1fr; gap:8px; align-items:center; }
 #legend-types .legend-item input[type="checkbox"] { margin:0; }
 #legend-types .legend-swatch { display:inline-block; width:12px; height:12px; border-radius:3px; border:1px solid #243044; }
 #legend-types .legend-label { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+/* Top header panel - fixed */
+#top-panel { position: fixed; top:12px; left:12px; right:12px; z-index:70; }
+
+/* Light theme overrides */
+:root[data-theme='light'] { --bg:#f8fafc; --panel:#ffffff; --ink:#0f172a; --muted:#334155; }
+[data-theme='light'] textarea, [data-theme='light'] input, [data-theme='light'] select { background:#ffffff; color:#0f172a; border:1px solid #cbd5e1; }
+[data-theme='light'] button { background:#f1f5f9; color:#0f172a; border:1px solid #cbd5e1; }
+[data-theme='light'] button:hover { background:#e2e8f0; }
+[data-theme='light'] #cy { background:#ffffff; border-color:#e5e7eb; }
+[data-theme='light'] .sidepanel .handle { background:#ffffff; border-color:#cbd5e1; color:#0f172a; }
+[data-theme='light'] .tag { border-color:#cbd5e1; color:#0f172a; background:#ffffff; }
+[data-theme='light'] .multiselect > button { background:#ffffff; color:#0f172a; border-color:#cbd5e1; }
+[data-theme='light'] .multiselect-menu { background:#ffffff; border-color:#cbd5e1; }
+[data-theme='light'] .multiselect-menu label:hover { background:#f8fafc; }

@@ -15,6 +15,26 @@ function relayout() {
   cy.layout({ name, animate: qs('#animate')?.checked ?? true, fit: true, padding: 20 }).run();
 }
 qs('#layout').addEventListener('change', relayout);
+// Theme toggle
+const themeSel = qs('#theme');
+if (themeSel) themeSel.addEventListener('change', ()=>{
+  const v = themeSel.value;
+  const root = document.documentElement;
+  if (v === 'light') root.setAttribute('data-theme','light'); else root.removeAttribute('data-theme');
+});
+
+// Language direction (RTL for Arabic)
+function applyLangDirection() {
+  const langSel = qs('#lang');
+  const v = langSel?.value || 'en';
+  const root = document.documentElement;
+  root.setAttribute('lang', v);
+  root.setAttribute('dir', v === 'ar' ? 'rtl' : 'ltr');
+}
+const langSel = qs('#lang');
+if (langSel) langSel.addEventListener('change', applyLangDirection);
+// Apply once on load
+applyLangDirection();
 
 // Graph selection expands and shows details (unless stopped)
 cy.on('select', 'node', async (evt) => { const n = evt.target.data(); renderNodeDetails(n); if (state.stopNodeExpand) return; await expandFromNode(n); });
