@@ -1,6 +1,7 @@
 import { state } from "../core/state.js";
 import { getViews } from "../core/api.js";
 import { qs } from "../core/dom.js";
+import { i18n } from "../core/i18n.js";
 
 const btn = qs("#view-dropdown-btn");
 const menu = qs("#view-dropdown");
@@ -22,12 +23,12 @@ function updateButton() {
     return v ? viewLabelFor(v, lang) : String(id);
   });
   if (!ids.length) {
-    btn.textContent = "Select views";
+    btn.textContent = i18n.t('select_views');
     return;
   }
   btn.textContent = "";
   // Prefix then each name on its own line
-  btn.append("Selected: ");
+  btn.append(i18n.t('selected_prefix') + ' ');
   names.forEach((name, idx) => {
     if (idx === 0) {
       btn.append(name);

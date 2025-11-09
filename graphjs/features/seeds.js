@@ -1,6 +1,7 @@
 import { state } from "../core/state.js";
 import { getSeedColumns, getSeedValues } from "../core/api.js";
 import { qs } from "../core/dom.js";
+import { i18n } from "../core/i18n.js";
 import { getSelectedViewIds } from "./views.js";
 import { cy } from "../core/cy-init.js";
 
@@ -89,10 +90,15 @@ export async function refreshSeedColumns() {
     } else {
       const opt = document.createElement("option");
       opt.value = "";
-      opt.textContent = "No active columns";
+      opt.textContent = i18n.t('no_active_columns');
       opt.disabled = true;
       opt.selected = true;
       sel.appendChild(opt);
+    }
+    // Ensure localized empty message in case of encoding issues
+    if (!cols || !cols.length) {
+      const first = sel.options && sel.options.length ? sel.options[0] : null;
+      if (first) first.textContent = i18n.t('no_active_columns');
     }
   }
   refreshSeedValuesSuggestions();
@@ -135,7 +141,7 @@ export function initSeedsUI() {
     const valInput = qs("#seed-val");
     const typed = (valInput.value || "").trim();
     if (!col || !typed) {
-      alert("Pick a Entity and enter a value.");
+      alert(i18n.t('alert_pick_entity_value'));
       return;
     }
     let idVal = typed;
@@ -158,7 +164,7 @@ export function initSeedsUI() {
   qs("#add-seed-selected").addEventListener("click", () => {
     const sel = cy.nodes(":selected");
     if (!sel || !sel.length) {
-      alert("Select node(s) in the graph to add.");
+      alert(i18n.t('alert_select_nodes'));
       return;
     }
     sel.forEach((n) => {

@@ -9,6 +9,7 @@ import { expandFromNode, runTraverse, clearGraph, updateGraphDataPanel } from '.
 import { initSearchUI, applySearchBlinkFromTerms } from './features/search.js';
 import { showShortestPath, clearShortestPath } from './features/path.js';
 import { initExportButtons } from './features/export.js';
+import { i18n } from './core/i18n.js';
 
 function relayout() {
   const name = qs('#layout').value;
@@ -23,13 +24,15 @@ if (themeSel) themeSel.addEventListener('change', ()=>{
   if (v === 'light') root.setAttribute('data-theme','light'); else root.removeAttribute('data-theme');
 });
 
-// Language direction (RTL for Arabic)
+// Language direction (RTL for Arabic) and UI i18n
 function applyLangDirection() {
   const langSel = qs('#lang');
   const v = langSel?.value || 'en';
   const root = document.documentElement;
   root.setAttribute('lang', v);
   root.setAttribute('dir', v === 'ar' ? 'rtl' : 'ltr');
+  i18n.setLang(v);
+  i18n.apply(document);
 }
 const langSel = qs('#lang');
 if (langSel) langSel.addEventListener('change', applyLangDirection);
@@ -38,7 +41,7 @@ applyLangDirection();
 
 // Graph selection expands and shows details (unless stopped)
 cy.on('select', 'node', async (evt) => { const n = evt.target.data(); renderNodeDetails(n); if (state.stopNodeExpand) return; await expandFromNode(n); });
-cy.on('unselect', 'node', () => { if (cy.nodes(':selected').length === 0) qs('#node-details').textContent = 'No node selected.'; });
+cy.on('unselect', 'node', () => { if (cy.nodes(':selected').length === 0) qs('#node-details').textContent = i18n.t('no_node_selected'); });
 
 // Top-level buttons
 qs('#run').addEventListener('click', runTraverse);
