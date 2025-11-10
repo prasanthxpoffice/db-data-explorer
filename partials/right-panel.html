@@ -1,0 +1,81 @@
+<div class="sidepanel right" id="right-panel">
+  <div class="handle" id="right-toggle">||</div>
+  <h1 data-i18n="options">Options</h1>
+
+  <div>
+    <div class="row">
+      <div>
+        <label data-i18n="depth">Depth</label>
+        <select id="depth">
+          <option value="1" selected>1</option>
+          <option value="2">2</option>
+          <option value="3">3</option>
+          <option value="4">4</option>
+          <option value="5">5</option>
+        </select>
+      </div>
+      <div>
+        <label data-i18n="max_conn">Max Connections per Node</label>
+        <input id="maxFanout" type="number" min="1" step="1" value="200" style="width: 155px" />
+      </div>
+    </div>
+
+    <div class="row-3">
+      <div>
+        <label data-i18n="layout">Layout</label>
+        <select id="layout">
+          <option value="cose" selected>cose</option>
+          <option value="breadthfirst">breadthfirst</option>
+          <option value="concentric">concentric</option>
+          <option value="grid">grid</option>
+        </select>
+      </div>
+      <div>
+        <label data-i18n="theme">Theme</label>
+        <select id="theme">
+          <option value="dark" selected data-i18n="dark">Dark</option>
+          <option value="light" data-i18n="light">Light</option>
+        </select>
+      </div>
+      <div class="field inline">
+        <label data-i18n="animate">Animate</label>
+        <input id="animate" type="checkbox" checked />
+      </div>
+    </div>
+    <div style="margin-top: 10px">
+      <div class="row">
+        <div style="display: none">
+          <label data-i18n="min_edge_support">Min Edge Support</label>
+          <input id="minSupport" type="range" min="1" max="6" value="1" style="width: 154px" />
+        </div>
+        <div class="field inline">
+          <label data-i18n="stop_node_expand">Stop Node Expand</label>
+          <input id="stopExpand" type="checkbox" />
+        </div>
+        <div class="field inline">
+          <label data-i18n="hide_leaves">Hide Leaves</label>
+          <input id="hideLeaves" type="checkbox" />
+        </div>
+      </div>
+      <div class="row-3" style="margin-top: 6px">
+        <div class="field">
+          <label>
+            <span data-i18n="highlight_hubs">Highlight Hubs</span>
+            <br />
+            <span data-i18n="hubs_deg_ge">(deg >=)</span>
+          </label>
+          <input id="hubDeg" type="number" min="2" step="1" value="6" style="width: 70px" />
+        </div>
+        <div class="field">
+          <label data-i18n="max_edges_per_node">Max Edges / Node</label>
+          <input id="fanoutLimit" type="number" min="1" step="1" value="200" style="width: 80px" />
+        </div>
+        <div class="field">
+          <label data-i18n="label_threshold">Label Threshold</label>
+          <input id="labelThresh" type="number" min="0" step="100" value="1500" style="width: 80px" />
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+

@@ -1,0 +1,67 @@
+<div class="sidepanel left open" id="left-panel">
+  <div class="handle" id="left-toggle">||</div>
+  <h1 data-i18n="app_title">Graph DB Data Explorer</h1>
+  <div>
+    <div class="row">
+      <div style="grid-column: 1 / -1">
+        <label data-i18n="data_source">Data Source</label>
+        <div class="multiselect" id="view-select">
+          <button id="view-dropdown-btn" type="button"></button>
+          <div class="multiselect-menu" id="view-dropdown"></div>
+        </div>
+      </div>
+    </div>
+    <div class="row">
+      <div style="grid-column: 1 / -1">
+        <label data-i18n="entity">Entity</label>
+        <select id="seed-col-select">
+          <option value="">--</option>
+        </select>
+      </div>
+    </div>
+    <div class="row">
+      <div>
+        <label data-i18n="entity_value">Entity Value</label>
+        <div>
+          <input id="seed-val" type="text" list="seedVals-list" />
+          <datalist id="seedVals-list"></datalist>
+        </div>
+      </div>
+    </div>
+    <div class="btns" style="margin-top: 8px">
+      <button id="add-seed" type="button" data-i18n="add">Add</button>
+      <button id="clear-seeds" type="button" data-i18n="clear">Clear</button>
+      <button id="add-seed-selected" type="button" style="display: none" data-i18n="add_from_selection">Add From Selection</button>
+      <button id="run" data-i18n="show">Show</button>
+    </div>
+    <ul id="seed-list" style="list-style: none; padding-left: 0; margin-top: 8px"></ul>
+    <div class="btns"></div>
+  </div>
+  <div id="graph-data-panel">
+    <div class="btns">
+      <button id="btnTidy" type="button" data-i18n="tidy">Tidy</button>
+      <button id="clear" data-i18n="clear_graph">Clear Graph</button>
+      <button id="btnExportPng" type="button" data-i18n="export_png">Export PNG</button>
+    </div>
+    <div id="details-panel">
+      <label data-i18n="selection">Selection</label>
+      <div id="node-details" class="hint" data-i18n="no_node_selected">No node selected.</div>
+    </div>
+    <div style="margin-top: 10px">
+      <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px">
+        <label data-i18n="legends_type">Legends (Type)</label>
+      </div>
+      <div id="legend-types"></div>
+    </div>
+    <div style="margin-top: 10px">
+      <label data-i18n="search">Search</label>
+      <input id="searchTerm" type="text" data-i18n-attr="placeholder:search_placeholder" placeholder="label / col / val" style="width: 160px" />
+      <div class="btns" style="margin-top: 6px">
+        <button id="btnSearchAdd" type="button" data-i18n="add">Add</button>
+        <button id="btnSearchClear" type="button" data-i18n="clear">Clear</button>
+      </div>
+      <ul id="search-terms" style="list-style: none; padding-left: 0; margin-top: 6px"></ul>
+    </div>
+  </div>
+</div>
+
