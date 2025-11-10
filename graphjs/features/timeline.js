@@ -1,7 +1,7 @@
 import { cy } from '../core/cy-init.js';
 import { state } from '../core/state.js';
 import { qs, setText } from '../core/dom.js';
-import { setEdgeStyleForSize, adjustLabels } from './filters.js';
+import { reapplyFilters, setEdgeStyleForSize, adjustLabels } from './filters.js';
 import { isAnimate } from '../core/cy-init.js';
 
 function snapshotFromCy() {
@@ -56,9 +56,11 @@ function updateSliderUi() {
 export function initTimelineUI() {
   const slider = qs('#timeline-slider');
   if (slider && !slider.dataset.bound) {
+    let raf = null;
     slider.addEventListener('input', () => {
       const target = parseInt(slider.value || '0', 10) || 0;
-      goToStep(target);
+      if (raf != null) cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => { raf = null; goToStep(target); });
     });
     slider.dataset.bound = '1';
   }
@@ -86,6 +88,7 @@ export function resetTimeline() {
 }
 
 export function goToStep(index) {
+  try { cy.stop(); } catch {}
   const total = state.timelineSteps.length;
   if (total === 0) return;
   const targetIdx = Math.max(0, Math.min(index, total - 1));
@@ -98,24 +101,25 @@ export function goToStep(index) {
   const targetNodeMap = new Map(target.nodes.map(n => [n.id, n]));
   const targetEdgeSet = new Set(target.edges.map(e => e.id));
 
+  // Apply diff in a batch for consistency
+  cy.startBatch();
   // Remove elements not in target (edges first)
   const edgesToRemove = [...currEdgeSet].filter(id => !targetEdgeSet.has(id));
   if (edgesToRemove.length) {
     const eles = cy.collection(edgesToRemove.map(id => cy.getElementById(id))).filter(e => !e.empty());
-    try { eles.animate({ style: { opacity: 0 } }, { duration: 150, complete: () => eles.remove() }); } catch { eles.remove(); }
+    try { eles.remove(); } catch { /* ignore */ }
   }
   const nodesToRemove = [...currNodeSet].filter(id => !targetNodeSet.has(id));
   if (nodesToRemove.length) {
     const eles = cy.collection(nodesToRemove.map(id => cy.getElementById(id))).filter(e => !e.empty());
-    try { eles.animate({ style: { opacity: 0 } }, { duration: 150, complete: () => eles.remove() }); } catch { eles.remove(); }
+    try { eles.remove(); } catch { /* ignore */ }
   }
 
   // Add missing nodes
   const currNodeSetAfter = new Set(cy.nodes().map(n => n.id()));
   const nodesToAdd = target.nodes.filter(n => !currNodeSetAfter.has(n.id));
   if (nodesToAdd.length) {
-    const added = cy.add(nodesToAdd.map(d => ({ group: 'nodes', data: { id: d.id, col: d.col, val: d.val, label: d.label, color: d.color, type: d.type }, position: d.position } )));
-    try { added.style('opacity', 0); added.animate({ style: { opacity: 1 } }, { duration: 250 }); } catch {}
+    cy.add(nodesToAdd.map(d => ({ group: 'nodes', data: { id: d.id, col: d.col, val: d.val, label: d.label, color: d.color, type: d.type }, position: d.position })));
   }
 
   // Update positions and data for nodes that exist in both current and target
@@ -135,8 +139,7 @@ export function goToStep(index) {
   const currEdgeSetAfter = new Set(cy.edges().map(e => e.id()));
   const edgesToAdd = target.edges.filter(e => !currEdgeSetAfter.has(e.id));
   if (edgesToAdd.length) {
-    const added = cy.add(edgesToAdd.map(d => ({ group: 'edges', data: { id: d.id, source: d.source, target: d.target, views_count: d.views_count, views_list: d.views_list } })));
-    try { added.style('opacity', 0); added.animate({ style: { opacity: 1 } }, { duration: 250 }); } catch {}
+    cy.add(edgesToAdd.map(d => ({ group: 'edges', data: { id: d.id, source: d.source, target: d.target, views_count: d.views_count, views_list: d.views_list } })));
   }
 
   // Restore bidirectional flags for edges in target
@@ -146,10 +149,13 @@ export function goToStep(index) {
       if (e && !e.empty()) try { e.data('bidirectional', true); } catch {}
     }
   });
+  cy.endBatch();
 
   // Apply preset layout to enforce positions
   const posMap = new Map(target.nodes.map(n => [n.id, n.position]));
   try {
+    // Temporarily show all nodes so preset can position them, filters reapplied afterward
+    cy.nodes().forEach(n => n.style('display', 'element'));
     cy.layout({ name: 'preset', positions: (ele) => posMap.get(ele.id()) || ele.position(), animate: isAnimate(), fit: false }).run();
   } catch {}
 
@@ -160,5 +166,5 @@ export function goToStep(index) {
   state.timelineIndex = targetIdx;
   updateSliderUi();
   updatePanelVisibility();
-  try { setEdgeStyleForSize(); adjustLabels(); } catch {}
+  try { reapplyFilters(); } catch { try { setEdgeStyleForSize(); adjustLabels(); } catch {} }
 }
