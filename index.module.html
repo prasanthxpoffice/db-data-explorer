@@ -57,8 +57,6 @@
                 <input
                   id="seed-val"
                   type="text"
-                  data-i18n-attr="placeholder:value_placeholder"
-                  placeholder="Value (e.g. 1)"
                   list="seedVals-list"
                 />
                 <datalist id="seedVals-list"></datalist>
@@ -191,6 +189,14 @@
             </div>
           </div>
         </div>
+      </div>
+    </div>
+
+    <!-- Global loading overlay -->
+    <div id="loading-overlay" role="status" aria-live="polite" hidden>
+      <div class="loader">
+        <div class="spinner" aria-hidden="true"></div>
+        <div class="loading-text">Loading…</div>
       </div>
     </div>
 

@@ -47,6 +47,7 @@ export const i18n = {
       path_start: 'Path Start',
       path_end: 'Path End',
       stay_on_path: 'Stay on Path',
+      loading: 'Loading…',
       select_views: 'Select views',
       selected_prefix: 'Selected:',
       alert_pick_entity_value: 'Pick an Entity and enter a value.',
