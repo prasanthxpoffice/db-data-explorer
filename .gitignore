@@ -1,8 +1,7 @@
 # LocalDB runtime files (never commit)
 db/*.mdf
 db/*.ldf
-
-# Optional: if you experiment with classic backups
+# Optional: classic backups
 db/*.bak
 
 # Node / tooling
@@ -12,5 +11,7 @@ node_modules/
 *.log
 dist/
 db/import-log.txt
+
+# .NET build
 server-dotnet/bin/
 server-dotnet/obj/
