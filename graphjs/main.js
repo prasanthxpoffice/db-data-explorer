@@ -10,7 +10,6 @@ import { initSearchUI, applySearchBlinkFromTerms } from './features/search.js';
 import { showShortestPath, clearShortestPath } from './features/path.js';
 import { initExportButtons } from './features/export.js';
 import { i18n } from './core/i18n.js';
-import { config } from './config.js';
 import { initTimelineUI } from './features/timeline.js';
 
 function relayout() {
@@ -28,7 +27,7 @@ if (themeSel) themeSel.addEventListener('change', ()=>{
 
 // Language direction (RTL for Arabic) and UI i18n
 function applyLangDirection() {
-  const v = config.lang || 'en';
+  const v = (window.appConfig?.lang) || 'en';
   const root = document.documentElement;
   root.setAttribute('lang', v);
   root.setAttribute('dir', v === 'ar' ? 'rtl' : 'ltr');
