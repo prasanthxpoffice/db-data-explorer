@@ -91,3 +91,6 @@ button:hover { background:#2a3648; }
 [data-theme='light'] #loading-overlay { background: rgba(15,23,42,0.20); }
 [data-theme='light'] #loading-overlay .loader { border-color:#e5e7eb; box-shadow:0 8px 24px rgba(0,0,0,0.15); }
 [data-theme='light'] #loading-overlay .spinner { border-color:#cbd5e1; border-top-color:#3b82f6; }
+
+/* Seed list button tweaks */
+#seed-list button { font-size:11px; padding:2px 6px; }

@@ -4,6 +4,7 @@ import { qs } from "../core/dom.js";
 import { i18n } from "../core/i18n.js";
 import { getSelectedViewIds } from "./views.js";
 import { cy } from "../core/cy-init.js";
+import { config } from "../config.js";
 
 function renderSeedList() {
   const ul = qs("#seed-list");
@@ -36,7 +37,7 @@ function renderSeedList() {
 export async function refreshSeedColumns() {
   try {
     const viewIds = getSelectedViewIds();
-    const lang = qs("#lang").value || "en";
+    const lang = config.lang || "en";
     const cols = await getSeedColumns(viewIds, lang);
     const sel = qs("#seed-col-select");
     sel.innerHTML = "";
@@ -114,7 +115,7 @@ export async function refreshSeedValuesSuggestions() {
       const term = (qs("#seed-val").value || "").trim();
       if (!col) return;
       const viewIds = getSelectedViewIds();
-      const lang = qs("#lang").value || "en";
+      const lang = config.lang || "en";
       const payload = await getSeedValues({ col, term, viewIds, lang });
       const list = qs("#seedVals-list");
       list.innerHTML = "";

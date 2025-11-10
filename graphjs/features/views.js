@@ -2,6 +2,7 @@ import { state } from "../core/state.js";
 import { getViews } from "../core/api.js";
 import { qs } from "../core/dom.js";
 import { i18n } from "../core/i18n.js";
+import { config } from "../config.js";
 
 const btn = qs("#view-dropdown-btn");
 const menu = qs("#view-dropdown");
@@ -16,7 +17,7 @@ function viewLabelFor(v, lang) {
 }
 
 function updateButton() {
-  const lang = qs("#lang").value || "en";
+  const lang = config.lang || "en";
   const ids = Array.from(state.viewSelected).sort((a, b) => a - b);
   const names = ids.map((id) => {
     const v = state.availableViews.find((x) => x.id === id);
@@ -41,7 +42,7 @@ function updateButton() {
 
 function renderMenu() {
   menu.innerHTML = "";
-  const lang = qs("#lang").value || "en";
+  const lang = config.lang || "en";
   state.availableViews.forEach((v) => {
     const label = document.createElement("label");
     const cb = document.createElement("input");
@@ -88,9 +89,5 @@ export async function initViews() {
   document.addEventListener("click", (e) => {
     if (!container.contains(e.target)) container.classList.remove("open");
   });
-  qs("#lang").addEventListener("change", () => {
-    if (container.classList.contains("open")) renderMenu();
-    updateButton();
-    document.dispatchEvent(new CustomEvent("views:changed"));
-  });
+  // Language is driven by config now; when changed externally, re-render via a custom event if needed.
 }

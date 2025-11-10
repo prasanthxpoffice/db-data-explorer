@@ -5,12 +5,13 @@ import { traverseStepMulti } from '../core/api.js';
 import { getSelectedViewIds } from './views.js';
 import { setEdgeStyleForSize, adjustLabels } from './filters.js';
 import { refreshSeedColumns } from './seeds.js';
+import { config } from '../config.js';
 import { captureTimelineStep, resetTimeline } from './timeline.js';
 
 function buildPayloadFromUI() {
   const viewIds = getSelectedViewIds();
   const depth = Math.max(1, parseInt(document.getElementById('depth').value || '1', 10));
-  const lang = document.getElementById('lang').value;
+  const lang = config.lang || 'en';
   const maxFanoutText = document.getElementById('maxFanout').value;
   const maxFanout = maxFanoutText ? parseInt(maxFanoutText, 10) : undefined;
   return { viewIds, frontier: state.seeds.slice(), perViewExclude: state.perViewExclude, depth, lang, maxFanout };
