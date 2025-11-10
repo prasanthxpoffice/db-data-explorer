@@ -10,6 +10,7 @@ import { initSearchUI, applySearchBlinkFromTerms } from './features/search.js';
 import { showShortestPath, clearShortestPath } from './features/path.js';
 import { initExportButtons } from './features/export.js';
 import { i18n } from './core/i18n.js';
+import { initTimelineUI } from './features/timeline.js';
 
 function relayout() {
   const name = qs('#layout').value;
@@ -71,3 +72,4 @@ reapplyFilters();
 relayout();
 refreshSeedColumns();
 updateGraphDataPanel();
+initTimelineUI();

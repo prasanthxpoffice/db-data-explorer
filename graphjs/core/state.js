@@ -35,4 +35,8 @@ export const state = {
   // misc
   isExpanding: false,
   stopNodeExpand: false,
+
+  // timeline
+  timelineSteps: [], // [{ nodes: Array<NodeData>, edges: Array<EdgeData> }]
+  timelineIndex: -1,
 };

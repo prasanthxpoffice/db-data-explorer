@@ -5,6 +5,7 @@ import { traverseStepMulti } from '../core/api.js';
 import { getSelectedViewIds } from './views.js';
 import { setEdgeStyleForSize, adjustLabels } from './filters.js';
 import { refreshSeedColumns } from './seeds.js';
+import { captureTimelineStep, resetTimeline } from './timeline.js';
 
 function buildPayloadFromUI() {
   const viewIds = getSelectedViewIds();
@@ -17,7 +18,13 @@ function buildPayloadFromUI() {
 
 function relayout() {
   const name = document.getElementById('layout').value;
-  setTimeout(() => { cy.layout({ name, animate: (document.getElementById('animate')?.checked ?? true), fit: true, padding: 20 }).run(); }, 50);
+  const animate = (document.getElementById('animate')?.checked ?? true);
+  return new Promise((resolve) => {
+    const layout = cy.layout({ name, animate, fit: true, padding: 20 });
+    cy.one('layoutstop', () => resolve());
+    // next tick to allow batched adds to flush
+    setTimeout(() => layout.run(), 0);
+  });
 }
 
 export function updateGraphDataPanel() {
@@ -29,11 +36,12 @@ export function updateGraphDataPanel() {
   } catch {}
 }
 
-export function renderEdges(rows) {
+export async function renderEdges(rows) {
   cy.batch(() => { rows.forEach(ensureEdge); });
-  relayout();
+  try { await relayout(); } catch {}
   try { refreshSeedColumns(); } catch {}
   updateGraphDataPanel();
+  try { captureTimelineStep(); } catch {}
 }
 
 export async function expandFromNode(n) {
@@ -69,7 +77,7 @@ export async function expandFromNode(n) {
             try { cy.style().update(); } catch {}
           }
         } catch {}
-        if (hasNew) { renderEdges(edges); setEdgeStyleForSize(); adjustLabels(); }
+        if (hasNew) { await renderEdges(edges); setEdgeStyleForSize(); adjustLabels(); }
       }
 
       state.currentFrontier = (nextFrontier || []).slice();
@@ -98,7 +106,7 @@ export async function runTraverse() {
       if (!next || next.length === 0) break;
       payload.frontier = next.slice(); payload.depth = 1; payload.perViewExclude = localExclude;
       const { edges, nextFrontier } = await traverseStepMulti(payload);
-      renderEdges(edges || []); setEdgeStyleForSize(); adjustLabels();
+      await renderEdges(edges || []); setEdgeStyleForSize(); adjustLabels();
       state.currentFrontier = (nextFrontier || []).slice();
       if (Array.isArray(payload.viewIds)) for (const v of payload.viewIds) for (const f of state.currentFrontier) addExcludeLocal(v, f.col, f.val);
       next = state.currentFrontier;
@@ -110,4 +118,5 @@ export function clearGraph() {
   cy.elements().remove(); state.currentFrontier = []; state.perViewExclude = []; state.perViewExcludeSet = new Set(); state.seeds = [];
   setEdgeStyleForSize(); adjustLabels();
   updateGraphDataPanel();
+  try { resetTimeline(); } catch {}
 }
