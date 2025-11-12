@@ -64,6 +64,20 @@ async function injectConfig() {
     const n = parseInt(cfg.userId, 10);
     cfg.userId = Number.isFinite(n) ? n : null;
   }
+
+  // Merge with localStorage config
+  try {
+    const storedConfig = localStorage.getItem('graphConfig');
+    if (storedConfig) {
+      const parsedStoredConfig = JSON.parse(storedConfig);
+      if (parsedStoredConfig && typeof parsedStoredConfig === 'object') {
+        cfg = { ...cfg, ...parsedStoredConfig };
+      }
+    }
+  } catch (err) {
+    console.error('Error reading graphConfig from localStorage', err);
+  }
+
   window.appConfig = cfg;
   // Apply language and direction early
   const v = cfg.lang || 'en';
